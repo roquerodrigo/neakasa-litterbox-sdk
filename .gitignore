@@ -1,0 +1,15 @@
+/resources/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+dist/
+build/
+*.egg-info/
+.DS_Store
+.idea/workspace.xml
+.neakasa-session.json

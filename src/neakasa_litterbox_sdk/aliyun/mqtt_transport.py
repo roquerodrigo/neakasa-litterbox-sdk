@@ -1,0 +1,195 @@
+"""Async MQTT transport for the Aliyun mobile-channel push stream.
+
+Wraps ``aiomqtt`` so the SDK can talk to the broker from inside an
+existing event loop (Home Assistant, asyncio scripts, ...). The
+network loop is the same asyncio loop the caller is already on — no
+threads.
+
+Exposes a small surface the status-stream layer builds on:
+:meth:`connect` / :meth:`disconnect` for lifecycle, :meth:`subscribe`
+to register a topic, :meth:`publish` to send a payload, and
+:meth:`bind_account` for the request/reply roundtrip on
+``/app/up/account/bind``. Incoming messages flow into the caller's
+``on_message`` coroutine via a background dispatcher task started by
+:meth:`connect`.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import json
+import logging
+import ssl
+import time
+import uuid
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, TypeAlias
+
+import aiomqtt
+
+from ..exceptions import ApiError, TransportError
+from ..utils._json import get_int, get_str, loads
+
+if TYPE_CHECKING:
+    from ..utils._json import JsonObject
+    from .mqtt_auth import MqttCredentials
+
+log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.aliyun.mqtt")
+
+OnMessage: TypeAlias = Callable[[str, bytes], Awaitable[None]]
+
+
+class MqttTransport:
+    """Manage a single ``aiomqtt`` session against the Aliyun mobile channel."""
+
+    def __init__(
+        self,
+        credentials: MqttCredentials,
+        on_message: OnMessage,
+        *,
+        keepalive: int = 60,
+        ca_certs: str | None = None,
+        tls_insecure: bool = False,
+    ) -> None:
+        self._credentials = credentials
+        self._on_message = on_message
+        self._keepalive = keepalive
+        # Aliyun's broker still chains to the legacy GlobalSign Root CA
+        # (1998), which most modern CA bundles have dropped. Point
+        # ``ca_certs`` at a bundle that still carries that root, or set
+        # ``tls_insecure=True`` if hostname/cert validation is acceptable
+        # to skip for your environment.
+        if tls_insecure:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+        else:
+            ctx = ssl.create_default_context(cafile=ca_certs)
+        self._tls_context = ctx
+        self._client: aiomqtt.Client | None = None
+        self._dispatch_task: asyncio.Task[None] | None = None
+        self._pending_replies: dict[str, asyncio.Future[JsonObject]] = {}
+
+    @property
+    def topic_prefix(self) -> str:
+        """``/sys/<productKey>/<deviceName>`` — caller-visible namespace."""
+        return f"/sys/{self._credentials.product_key}/{self._credentials.device_name}"
+
+    async def connect(self) -> None:
+        """Open the TCP+TLS connection and start the message dispatcher."""
+        if self._client is not None:
+            return
+        client = aiomqtt.Client(
+            hostname=self._credentials.host,
+            port=self._credentials.port,
+            identifier=self._credentials.client_id,
+            username=self._credentials.username,
+            password=self._credentials.password,
+            tls_context=self._tls_context,
+            keepalive=self._keepalive,
+            clean_session=True,
+        )
+        await client.__aenter__()
+        self._client = client
+        self._dispatch_task = asyncio.create_task(self._dispatch_loop())
+        log.info("MQTT connected to %s", self._credentials.host)
+
+    async def disconnect(self) -> None:
+        """Tear down the session and stop the dispatcher. Idempotent."""
+        if self._dispatch_task is not None:
+            self._dispatch_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._dispatch_task
+            self._dispatch_task = None
+        if self._client is not None:
+            with contextlib.suppress(aiomqtt.MqttError):
+                await self._client.__aexit__(None, None, None)
+            self._client = None
+        log.info("MQTT disconnected from %s", self._credentials.host)
+
+    async def subscribe(self, topic: str, qos: int = 0) -> None:
+        """Subscribe to ``topic`` (may be a wildcard pattern)."""
+        await self._require_client().subscribe(topic, qos=qos)
+
+    async def publish(self, topic: str, payload: bytes, *, qos: int = 0) -> None:
+        """Publish ``payload`` to ``topic`` (fire-and-forget at QoS 0)."""
+        await self._require_client().publish(topic, payload=payload, qos=qos)
+
+    async def bind_account(self, iot_token: str, *, timeout: float = 10.0) -> None:
+        """Associate this MQTT session with the user identified by ``iot_token``.
+
+        Publishes ``/app/up/account/bind`` and waits for the matching
+        ``bind_reply`` on the down-stream namespace. Without this step
+        the broker keeps the session anonymous and the cloud-side
+        fanout won't route the user's devices' property pushes here.
+        Raises on a non-200 reply code.
+        """
+        request_id = uuid.uuid4().hex
+        body = json.dumps(
+            {
+                "id": request_id,
+                "system": {"version": "1.0", "time": str(int(time.time() * 1000))},
+                "request": {"clientId": self._credentials.username},
+                "params": {"iotToken": iot_token},
+            }
+        ).encode("utf-8")
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[JsonObject] = loop.create_future()
+        self._pending_replies[request_id] = future
+        try:
+            await self.publish(f"{self.topic_prefix}/app/up/account/bind", body, qos=1)
+            reply = await asyncio.wait_for(future, timeout=timeout)
+        except TimeoutError as exc:
+            raise TransportError(
+                f"Failed to bind account: no reply within {timeout}s",
+            ) from exc
+        finally:
+            self._pending_replies.pop(request_id, None)
+        code = get_int(reply, "code", default=-1)
+        if code != 200:
+            raise ApiError(
+                f"Failed to bind account: server returned code {code}",
+                code=code,
+                server_message=get_str(reply, "message") or None,
+            )
+
+    def _require_client(self) -> aiomqtt.Client:
+        if self._client is None:
+            raise TransportError("Failed to use MQTT: not connected, call connect() first")
+        return self._client
+
+    async def _dispatch_loop(self) -> None:
+        """Pull messages from aiomqtt and route them to handlers."""
+        client = self._require_client()
+        try:
+            async for message in client.messages:
+                topic = str(message.topic)
+                raw = message.payload
+                payload = raw if isinstance(raw, bytes) else bytes(raw)
+                log.debug("MQTT message on %s (%d bytes)", topic, len(payload))
+                if self._pending_replies and self._try_dispatch_reply(payload):
+                    continue
+                try:
+                    await self._on_message(topic, payload)
+                except Exception:
+                    log.exception("MQTT on_message handler raised")
+        except asyncio.CancelledError:
+            raise
+        except aiomqtt.MqttError as exc:
+            log.warning("MQTT dispatcher exited: %s", exc)
+
+    def _try_dispatch_reply(self, payload: bytes) -> bool:
+        """Return ``True`` if ``payload`` resolved a pending request-id wait."""
+        try:
+            body = loads(payload)
+        except ValueError:
+            return False
+        request_id = body.get("id")
+        if not isinstance(request_id, str):
+            return False
+        future = self._pending_replies.get(request_id)
+        if future is None or future.done():
+            return False
+        future.set_result(body)
+        return True
