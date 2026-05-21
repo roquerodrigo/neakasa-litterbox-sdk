@@ -61,9 +61,7 @@ async def test_connect_builds_context_in_executor(monkeypatch) -> None:
         "neakasa_litterbox_sdk.aliyun.mqtt_transport.aiomqtt.Client",
         MagicMock(return_value=fake_client),
     )
-    monkeypatch.setattr(
-        transport, "_dispatch_loop", AsyncMock(return_value=None)
-    )
+    monkeypatch.setattr(transport, "_dispatch_loop", AsyncMock(return_value=None))
     await transport.connect()
     assert isinstance(transport._tls_context, ssl.SSLContext)
     # Avoid leaving the dispatch task pending across the test boundary.
@@ -83,9 +81,7 @@ async def test_connect_uses_prebuilt_context(monkeypatch) -> None:
         "neakasa_litterbox_sdk.aliyun.mqtt_transport.aiomqtt.Client",
         client_factory,
     )
-    monkeypatch.setattr(
-        transport, "_dispatch_loop", AsyncMock(return_value=None)
-    )
+    monkeypatch.setattr(transport, "_dispatch_loop", AsyncMock(return_value=None))
     await transport.connect()
     assert transport._tls_context is prebuilt
     assert client_factory.call_args.kwargs["tls_context"] is prebuilt

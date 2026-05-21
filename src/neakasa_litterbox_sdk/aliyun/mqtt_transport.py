@@ -93,9 +93,7 @@ class MqttTransport:
             return
         if self._tls_context is None:
             loop = asyncio.get_running_loop()
-            self._tls_context = await loop.run_in_executor(
-                None, self._build_tls_context
-            )
+            self._tls_context = await loop.run_in_executor(None, self._build_tls_context)
         client = aiomqtt.Client(
             hostname=self._credentials.host,
             port=self._credentials.port,
