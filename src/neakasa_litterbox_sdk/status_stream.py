@@ -20,6 +20,7 @@ from .models import StatusUpdate
 from .utils._json import JsonValue, loads
 
 if TYPE_CHECKING:
+    import ssl
     from types import TracebackType
 
     from .aliyun.transport import AliyunTransport
@@ -69,11 +70,13 @@ class StatusStream:
         *,
         ca_certs: str | None = None,
         tls_insecure: bool = False,
+        tls_context: ssl.SSLContext | None = None,
     ) -> None:
         self._aliyun = aliyun
         self._login = login
         self._ca_certs = ca_certs
         self._tls_insecure = tls_insecure
+        self._tls_context = tls_context
         self._transport: MqttTransport | None = None
         self._stop_event = asyncio.Event()
         self._on_silent_mode: OnBoolEvent | None = None
@@ -113,6 +116,7 @@ class StatusStream:
             on_message=self._handle_message,
             ca_certs=self._ca_certs,
             tls_insecure=self._tls_insecure,
+            tls_context=self._tls_context,
         )
         await transport.connect()
         await transport.subscribe(f"{transport.topic_prefix}/app/down/#", qos=1)

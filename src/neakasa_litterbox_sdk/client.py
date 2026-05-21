@@ -34,6 +34,7 @@ from .status_stream import StatusStream
 from .utils._json import get_int, get_str
 
 if TYPE_CHECKING:
+    import ssl
     from types import TracebackType
 
     from .utils._json import JsonObject, JsonValue
@@ -285,6 +286,7 @@ class NeakasaClient:
         *,
         ca_certs: str | None = None,
         tls_insecure: bool = False,
+        tls_context: ssl.SSLContext | None = None,
     ) -> StatusStream:
         """Open a live status stream against the user's account.
 
@@ -306,7 +308,10 @@ class NeakasaClient:
         validates against (the Aliyun broker still chains to the legacy
         GlobalSign Root CA dropped by recent ``certifi`` releases).
         ``tls_insecure=True`` skips hostname/cert validation entirely
-        for environments where that's acceptable.
+        for environments where that's acceptable. ``tls_context`` hands
+        in a fully-built :class:`ssl.SSLContext` and bypasses both —
+        useful for callers (e.g. Home Assistant) that already manage a
+        shared, pre-warmed context off the event loop.
 
         Requires that :meth:`login` has been called first.
         """
@@ -316,6 +321,7 @@ class NeakasaClient:
             session,
             ca_certs=ca_certs,
             tls_insecure=tls_insecure,
+            tls_context=tls_context,
         )
 
     async def _get_properties(self, device_name: str) -> JsonObject:

@@ -51,6 +51,7 @@ class MqttTransport:
         keepalive: int = 60,
         ca_certs: str | None = None,
         tls_insecure: bool = False,
+        tls_context: ssl.SSLContext | None = None,
     ) -> None:
         self._credentials = credentials
         self._on_message = on_message
@@ -59,17 +60,27 @@ class MqttTransport:
         # (1998), which most modern CA bundles have dropped. Point
         # ``ca_certs`` at a bundle that still carries that root, or set
         # ``tls_insecure=True`` if hostname/cert validation is acceptable
-        # to skip for your environment.
-        if tls_insecure:
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-        else:
-            ctx = ssl.create_default_context(cafile=ca_certs)
-        self._tls_context = ctx
+        # to skip for your environment. ``tls_context`` short-circuits
+        # both — caller hands in a fully-built :class:`ssl.SSLContext`.
+        self._ca_certs = ca_certs
+        self._tls_insecure = tls_insecure
+        # Building the context calls ``load_default_certs`` /
+        # ``load_verify_locations`` synchronously (file I/O) — defer it
+        # to :meth:`connect` so we can run it in an executor and avoid
+        # blocking the caller's event loop.
+        self._tls_context: ssl.SSLContext | None = tls_context
         self._client: aiomqtt.Client | None = None
         self._dispatch_task: asyncio.Task[None] | None = None
         self._pending_replies: dict[str, asyncio.Future[JsonObject]] = {}
+
+    def _build_tls_context(self) -> ssl.SSLContext:
+        """Build the SSL context off-thread (blocking file I/O)."""
+        if self._tls_insecure:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return ctx
+        return ssl.create_default_context(cafile=self._ca_certs)
 
     @property
     def topic_prefix(self) -> str:
@@ -80,6 +91,11 @@ class MqttTransport:
         """Open the TCP+TLS connection and start the message dispatcher."""
         if self._client is not None:
             return
+        if self._tls_context is None:
+            loop = asyncio.get_running_loop()
+            self._tls_context = await loop.run_in_executor(
+                None, self._build_tls_context
+            )
         client = aiomqtt.Client(
             hostname=self._credentials.host,
             port=self._credentials.port,
