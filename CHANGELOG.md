@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.2...v0.1.3) (2026-05-22)
+
+
+### Bug Fixes
+
+* **aliyun:** auto-refresh iotToken on 401 instead of failing the call ([47b13ed](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/47b13ed1891a8246462ea60d390db7bd74ddc808))
+
 ## [0.1.2](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.1...v0.1.2) (2026-05-21)
 
 
