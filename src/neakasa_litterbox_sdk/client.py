@@ -241,6 +241,43 @@ class NeakasaClient:
         )
         return _unwrap_envelope(envelope, context=context, auth=True)
 
+    async def _aliyun_call_authed(
+        self,
+        path: str,
+        *,
+        api_version: str,
+        payload: dict[str, JsonValue],
+        language: str,
+        context: str,
+    ) -> JsonValue:
+        """Call an Aliyun endpoint and unwrap; refresh the token once on 401.
+
+        Aliyun's ``iotToken`` expires periodically without notice. When
+        the gateway answers 401 we re-run :meth:`_authenticate_aliyun`
+        (which uses the REST session that's still valid) and replay the
+        request once. A second 401 surfaces ``SessionExpiredError`` to
+        the caller — at that point the REST session itself is gone and
+        the caller needs to ``login()`` from scratch.
+        """
+        for attempt in range(2):
+            response = await self._aliyun.call(
+                path,
+                api_version=api_version,
+                iot_token=self._require_iot_session(),
+                payload=payload,
+                language=language,
+            )
+            try:
+                return _unwrap_aliyun(response, context=context)
+            except SessionExpiredError:
+                if attempt == 0:
+                    log.info("Aliyun session expired on %s; refreshing iotToken", context)
+                    await self._authenticate_aliyun()
+                    continue
+                raise
+        # Unreachable — loop body either returns, raises, or continues exactly once.
+        raise NeakasaError("Internal: aliyun retry loop exhausted")
+
     def _require_session(self) -> LoginResult:
         """Return the active :class:`LoginResult` or raise if none is held."""
         if self._login_result is None:
@@ -256,15 +293,14 @@ class NeakasaClient:
         app's device list. The returned ``Device.device_name`` is the
         identifier the history endpoints expect.
         """
-        response = await self._aliyun.call(
-            "/uc/listBindingByAccount",
-            api_version="1.0.8",
-            iot_token=self._require_iot_session(),
-            payload={},
-            language=f"{self._language}-US",
-        )
         data = _expect_object(
-            _unwrap_aliyun(response, context="list devices"),
+            await self._aliyun_call_authed(
+                "/uc/listBindingByAccount",
+                api_version="1.0.8",
+                payload={},
+                language=f"{self._language}-US",
+                context="list devices",
+            ),
             context="list devices",
         )
         devices = Device.list_from_response(data)
@@ -327,15 +363,14 @@ class NeakasaClient:
     async def _get_properties(self, device_name: str) -> JsonObject:
         """Return the raw ``data`` map from ``/thing/properties/get``."""
         device = await self._resolve_device(device_name)
-        response = await self._aliyun.call(
-            "/thing/properties/get",
-            api_version="1.0.4",
-            iot_token=self._require_iot_session(),
-            payload={"iotId": device.iot_id},
-            language=f"{self._language}-US",
-        )
         return _expect_object(
-            _unwrap_aliyun(response, context="get device status"),
+            await self._aliyun_call_authed(
+                "/thing/properties/get",
+                api_version="1.0.4",
+                payload={"iotId": device.iot_id},
+                language=f"{self._language}-US",
+                context="get device status",
+            ),
             context="get device status",
         )
 
@@ -457,14 +492,13 @@ class NeakasaClient:
     ) -> None:
         """POST one ``/thing/service/invoke`` and raise on an envelope error."""
         device = await self._resolve_device(device_name)
-        response = await self._aliyun.call(
+        await self._aliyun_call_authed(
             "/thing/service/invoke",
             api_version="1.0.5",
-            iot_token=self._require_iot_session(),
             payload={"iotId": device.iot_id, "identifier": identifier, "args": args},
             language=f"{self._language}-US",
+            context=context,
         )
-        _unwrap_aliyun(response, context=context)
 
     async def _set_property(
         self,
@@ -476,14 +510,13 @@ class NeakasaClient:
     ) -> None:
         """POST one ``/thing/properties/set`` and raise on an envelope error."""
         device = await self._resolve_device(device_name)
-        response = await self._aliyun.call(
+        await self._aliyun_call_authed(
             "/thing/properties/set",
             api_version="1.0.5",
-            iot_token=self._require_iot_session(),
             payload={"iotId": device.iot_id, "items": {key: value}},
             language=f"{self._language}-US",
+            context=context,
         )
-        _unwrap_aliyun(response, context=context)
 
     async def _resolve_role(self, device_name: str) -> DeviceRole:
         """Return the caller's :class:`DeviceRole` for ``device_name``."""
@@ -562,12 +595,23 @@ def _unwrap_envelope(envelope: JsonObject, *, context: str, auth: bool = False) 
     return envelope.get("data")
 
 
+# The Aliyun mobile-channel API Gateway uses HTTP-style codes
+# (200 = OK), with 401 specifically meaning the ``iotToken`` is no
+# longer accepted. Surface that as :class:`SessionExpiredError` so
+# callers (and :meth:`NeakasaClient._aliyun_call_authed`) can react
+# with a token refresh instead of treating it as a generic failure.
+_ALIYUN_SESSION_EXPIRED_CODES: frozenset[int] = frozenset({401})
+
+
 def _unwrap_aliyun(envelope: JsonObject, *, context: str) -> JsonValue:
     """Unwrap an Aliyun IoT API Gateway envelope (success is ``code == 200``)."""
     code = get_int(envelope, "code", default=-1)
     message = get_str(envelope, "message")
     if code != 200:
-        raise ApiError(
+        error_cls: type[ApiError] = (
+            SessionExpiredError if code in _ALIYUN_SESSION_EXPIRED_CODES else ApiError
+        )
+        raise error_cls(
             f"Failed to {context}: server returned code {code}",
             code=code,
             server_message=message or None,
