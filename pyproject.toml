@@ -37,6 +37,11 @@ packages = ["src/neakasa_litterbox_sdk"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = [
+    "--cov=src/neakasa_litterbox_sdk",
+    "--cov-report=term-missing",
+    "--cov-fail-under=50",
+]
 
 [dependency-groups]
 dev = [
