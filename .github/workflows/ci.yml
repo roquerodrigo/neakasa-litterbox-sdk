@@ -42,7 +42,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      id-token: write
     uses: roquerodrigo/.github/.github/workflows/sdk-release.yml@v2
     with:
       pypi-package: neakasa-litterbox-sdk
