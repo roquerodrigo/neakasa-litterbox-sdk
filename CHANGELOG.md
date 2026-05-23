@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.3...v0.1.4) (2026-05-23)
+
+
+### Bug Fixes
+
+* **client:** fall back to full REST re-login on handshake failure ([e758985](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/e7589854fe7b77b795604a52392dbb8d30476680))
+* **client:** fall back to full REST re-login when Aliyun handshake fails ([838c323](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/838c32392cd865e7aa5a118366e24c57629d31db))
+
 ## [0.1.3](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.2...v0.1.3) (2026-05-22)
 
 
