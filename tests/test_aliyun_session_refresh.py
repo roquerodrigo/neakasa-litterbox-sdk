@@ -56,8 +56,8 @@ async def test_aliyun_call_authed_refreshes_on_401(
     )
     call_mock = AsyncMock(side_effect=lambda *args, **kwargs: next(responses))
     monkeypatch.setattr(client._aliyun, "call", call_mock)
-    refresh_mock = AsyncMock(return_value="iot-token-1")
-    monkeypatch.setattr(client, "_authenticate_aliyun", refresh_mock)
+    refresh_mock = AsyncMock()
+    monkeypatch.setattr(client, "_refresh_iot_session", refresh_mock)
 
     data = await client._aliyun_call_authed(
         "/uc/listBindingByAccount",
@@ -77,8 +77,8 @@ async def test_aliyun_call_authed_propagates_second_401(
     client = _make_client(monkeypatch)
     call_mock = AsyncMock(return_value={"code": 401, "message": "expired"})
     monkeypatch.setattr(client._aliyun, "call", call_mock)
-    refresh_mock = AsyncMock(return_value="iot-token-1")
-    monkeypatch.setattr(client, "_authenticate_aliyun", refresh_mock)
+    refresh_mock = AsyncMock()
+    monkeypatch.setattr(client, "_refresh_iot_session", refresh_mock)
 
     with pytest.raises(SessionExpiredError):
         await client._aliyun_call_authed(
@@ -99,7 +99,7 @@ async def test_aliyun_call_authed_passes_through_on_first_success(
     call_mock = AsyncMock(return_value={"code": 200, "data": [{"id": 1}]})
     monkeypatch.setattr(client._aliyun, "call", call_mock)
     refresh_mock = AsyncMock()
-    monkeypatch.setattr(client, "_authenticate_aliyun", refresh_mock)
+    monkeypatch.setattr(client, "_refresh_iot_session", refresh_mock)
 
     data = await client._aliyun_call_authed(
         "/uc/listBindingByAccount",
@@ -111,3 +111,46 @@ async def test_aliyun_call_authed_passes_through_on_first_success(
     assert data == [{"id": 1}]
     refresh_mock.assert_not_awaited()
     assert call_mock.await_count == 1
+
+
+async def test_refresh_iot_session_falls_back_to_full_relogin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When _authenticate_aliyun fails, _refresh_iot_session should
+    issue a fresh REST login and retry the Aliyun handshake."""
+    client = _make_client(monkeypatch)
+
+    auth_call_count = 0
+
+    async def _authenticate_side_effect() -> str:
+        nonlocal auth_call_count
+        auth_call_count += 1
+        if auth_call_count == 1:
+            raise ApiError("Failed to get Aliyun region: server returned code 500", code=500)
+        return "iot-token-new"
+
+    monkeypatch.setattr(client, "_authenticate_aliyun", _authenticate_side_effect)
+    login_rest_mock = AsyncMock()
+    monkeypatch.setattr(client, "_login_rest", login_rest_mock)
+
+    await client._refresh_iot_session()
+
+    login_rest_mock.assert_awaited_once()
+    assert auth_call_count == 2
+
+
+async def test_refresh_iot_session_skips_relogin_when_handshake_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When _authenticate_aliyun succeeds on first try, no REST re-login."""
+    client = _make_client(monkeypatch)
+
+    auth_mock = AsyncMock(return_value="iot-token-refreshed")
+    monkeypatch.setattr(client, "_authenticate_aliyun", auth_mock)
+    login_rest_mock = AsyncMock()
+    monkeypatch.setattr(client, "_login_rest", login_rest_mock)
+
+    await client._refresh_iot_session()
+
+    auth_mock.assert_awaited_once()
+    login_rest_mock.assert_not_awaited()
