@@ -272,7 +272,7 @@ class NeakasaClient:
             except SessionExpiredError:
                 if attempt == 0:
                     log.info("Aliyun session expired on %s; refreshing iotToken", context)
-                    await self._authenticate_aliyun()
+                    await self._refresh_iot_session()
                     continue
                 raise
         # Unreachable — loop body either returns, raises, or continues exactly once.
@@ -531,6 +531,21 @@ class NeakasaClient:
                 f"Failed to resolve device: '{device_name}' is not registered on this account",
             )
         return self._device_index[device_name]
+
+    async def _refresh_iot_session(self) -> None:
+        """Re-establish the IoT session, falling back to a full REST re-login.
+
+        First tries the 4-step Aliyun handshake with the existing
+        ``aliAuthenticationToken``. If that token has also expired (or the
+        Aliyun API is transiently unavailable), issues a fresh REST login
+        to mint a new ``aliAuthenticationToken`` and retries the handshake.
+        """
+        try:
+            await self._authenticate_aliyun()
+        except (ApiError, AuthenticationError, NeakasaError):
+            log.info("Aliyun handshake failed, attempting full re-login")
+            await self._login_rest()
+            await self._authenticate_aliyun()
 
     async def _authenticate_aliyun(self) -> str:
         """Exchange the REST session for an Aliyun IoT session and return the new token.
