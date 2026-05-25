@@ -1,5 +1,8 @@
 # neakasa-litterbox-sdk
 
+[![CI](https://github.com/roquerodrigo/neakasa-litterbox-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/roquerodrigo/neakasa-litterbox-sdk/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/neakasa-litterbox-sdk)](https://pypi.org/project/neakasa-litterbox-sdk/)
+
 Async Python SDK for the **Neakasa M1** self-cleaning cat litter box.
 
 > ⚠️ **Unofficial.** This project is not affiliated with, endorsed by,
