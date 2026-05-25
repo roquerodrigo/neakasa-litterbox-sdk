@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.4...v0.1.5) (2026-05-25)
+
+
+### Documentation
+
+* add CI and PyPI badges ([2073f1f](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/2073f1f2635d2a01cb590af0ba3b97c55a74c2d8))
+* add CI and PyPI badges ([a32e9e7](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/a32e9e7ff4bb9c4291e28820a44a1a7f18b03fbd))
+
 ## [0.1.4](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.3...v0.1.4) (2026-05-23)
 
 
