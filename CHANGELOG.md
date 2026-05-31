@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.5...v0.1.6) (2026-05-31)
+
+
+### Bug Fixes
+
+* **status:** derive bucket_full from room_of_bin, not bucketStatus ([a6b3d93](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/a6b3d93a3bf906c1174d72e982640c101cdabd34))
+* **status:** derive bucket_full from room_of_bin, not bucketStatus ([c6152b7](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/c6152b7550c47cd10238930505c320cb51f16a14))
+
 ## [0.1.5](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.4...v0.1.5) (2026-05-25)
 
 
