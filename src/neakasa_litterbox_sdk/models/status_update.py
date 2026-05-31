@@ -69,7 +69,7 @@ def _flatten_changes(items: JsonObject) -> dict[str, JsonValue]:
             out["auto_level"] = value == 1
         elif key == "youngCatMode":
             out["young_cat_mode"] = value == 1
-        elif key == "bucketStatus":
+        elif key == "room_of_bin":
             out["bucket_full"] = value != 0
         elif key == "latestAddSandTime" and isinstance(value, str):
             out["last_sand_added"] = value
