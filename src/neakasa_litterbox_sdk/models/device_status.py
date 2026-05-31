@@ -61,7 +61,10 @@ class DeviceStatus:
             cat_present=get_int(cat_left, "kitten") == 1,
             cat_stay_seconds=get_int(cat_left, "stayTime"),
             needs_cleaning=get_int(cat_left, "needClean") == 1,
-            bucket_full=_property_int(raw, "bucketStatus") != 0,
+            # The M1 signals a full waste bin via ``room_of_bin`` (1 = full,
+            # 0 = empty), confirmed by diffing the cloud snapshot full↔empty.
+            # ``bucketStatus`` stays 0 on this model and never reflected it.
+            bucket_full=_property_int(raw, "room_of_bin") != 0,
             last_sand_added=_property_str(raw, "latestAddSandTime"),
             cleaning_enabled=get_int(clean_cfg, "active") == 1,
             auto_level=_property_int(raw, "autoLevel") == 1,

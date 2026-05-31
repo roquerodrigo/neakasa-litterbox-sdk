@@ -40,6 +40,20 @@ def test_known_property_mapping_is_snake_case() -> None:
     }
 
 
+def test_room_of_bin_maps_to_bucket_full() -> None:
+    """The M1 reports a full waste bin via ``room_of_bin`` (1 = full)."""
+    full = StatusUpdate.from_push(
+        {"params": {"deviceName": "PB01", "items": {"room_of_bin": {"time": 1, "value": 1}}}}
+    )
+    empty = StatusUpdate.from_push(
+        {"params": {"deviceName": "PB01", "items": {"room_of_bin": {"time": 1, "value": 0}}}}
+    )
+    assert full is not None
+    assert empty is not None
+    assert full.changes == {"bucket_full": True}
+    assert empty.changes == {"bucket_full": False}
+
+
 def test_unknown_property_passes_through_under_camelcase() -> None:
     """A property the SDK doesn't recognise still reaches the consumer raw."""
     update = StatusUpdate.from_push(

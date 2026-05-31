@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from neakasa_litterbox_sdk import Cat, CatGender, DailyStatistics, RecordType, ToiletRecord
+from neakasa_litterbox_sdk import (
+    Cat,
+    CatGender,
+    DailyStatistics,
+    DeviceStatus,
+    RecordType,
+    ToiletRecord,
+)
 
 
 def test_cat_parses_live_sample() -> None:
@@ -105,6 +112,19 @@ def test_toilet_record_list_from_response_tolerates_missing_envelope() -> None:
     assert ToiletRecord.list_from_response({}) == []
     assert ToiletRecord.list_from_response(None) == []
     assert ToiletRecord.list_from_response([{"type": 1}]) == []  # not the wrapped shape
+
+
+def _wrap(value: object) -> dict[str, object]:
+    """Wrap a value in the ``{"time", "value"}`` envelope the cloud uses."""
+    return {"time": 1, "value": value}
+
+
+def test_device_status_bucket_full_reads_room_of_bin() -> None:
+    """``room_of_bin`` drives ``bucket_full`` (1 = full); ``bucketStatus`` is ignored."""
+    full = DeviceStatus.from_response({"room_of_bin": _wrap(1), "bucketStatus": _wrap(0)})
+    empty = DeviceStatus.from_response({"room_of_bin": _wrap(0), "bucketStatus": _wrap(1)})
+    assert full.bucket_full is True
+    assert empty.bucket_full is False
 
 
 def test_daily_statistics_parses_live_sample() -> None:
