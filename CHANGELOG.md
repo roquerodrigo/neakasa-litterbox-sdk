@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.9](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.8...v0.1.9) (2026-06-01)
+
+
+### Features
+
+* **status:** map operating_state 5 -&gt; CAT_APPEARS + warn on unmapped codes ([f896e12](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/f896e121a4bca58eed43b0c8b93136bf7b7f0210))
+* **status:** map operating_state 5 -&gt; OCCUPIED (cat inside) ([1b27837](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/1b2783749919f072aafa18a5498e3fabd158500f))
+
 ## [0.1.8](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.7...v0.1.8) (2026-06-01)
 
 
