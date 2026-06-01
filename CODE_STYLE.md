@@ -173,7 +173,8 @@ in **English**:
 - `requires-python = ">=3.11"`. Don't bump this without a `BREAKING CHANGE:`
   footer.
 - Public dependencies: keep them minimal and use `>=` lower bounds, not pins.
-  Currently only `cryptography>=44.0` for AES-CBC.
+  Currently `aiohttp>=3.13.5`, `aiomqtt>=2.5.1`, and `cryptography>=44.0`
+  (AES-CBC).
 - The `[dependency-groups] dev` group carries test-only deps;
   `[dependency-groups] lint` carries ruff + mypy.
 - A `py.typed` marker ships in the wheel so consumers see type info.
