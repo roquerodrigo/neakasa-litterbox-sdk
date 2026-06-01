@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.7...v0.1.8) (2026-06-01)
+
+
+### Bug Fixes
+
+* **build:** pin hatchling &lt;1.28 so the PyPI publish accepts the wheel ([64484f6](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/64484f60f0d3979ebfc9fb6e33e1d5ee2c02abf7))
+* **build:** pin hatchling &lt;1.28 so the PyPI publish accepts the wheel ([b7606d4](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/b7606d42e4db435ab3830ae6f8e986b23b6d7f5a))
+
 ## [0.1.7](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.6...v0.1.7) (2026-06-01)
 
 
