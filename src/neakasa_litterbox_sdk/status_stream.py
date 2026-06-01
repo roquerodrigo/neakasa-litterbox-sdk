@@ -176,7 +176,7 @@ class StatusStream:
         """Fires with ``(device_name, state)`` when the box changes activity.
 
         ``state`` is an :class:`OperatingState` (idle / cleaning /
-        restoring / leveling); unrecognised codes arrive as
+        restoring / leveling / cat_appears); unrecognised codes arrive as
         :attr:`OperatingState.UNKNOWN`.
         """
         self._on_operating_state = fn

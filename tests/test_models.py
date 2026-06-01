@@ -149,7 +149,21 @@ def test_device_status_operating_state_reads_bucket_status() -> None:
 def test_operating_state_from_code() -> None:
     assert OperatingState.from_code(3) is OperatingState.LEVELING
     assert OperatingState.from_code(1) is OperatingState.RESTORING
+    assert OperatingState.from_code(5) is OperatingState.CAT_APPEARS
     assert OperatingState.from_code(7) is OperatingState.UNKNOWN
+
+
+def test_operating_state_unmapped_code_warns_once(caplog) -> None:
+    import logging
+
+    from neakasa_litterbox_sdk.models import operating_state as os_mod
+
+    os_mod._warned_codes.discard(42)
+    with caplog.at_level(logging.WARNING, logger=os_mod.__name__):
+        assert OperatingState.from_code(42) is OperatingState.UNKNOWN
+        assert OperatingState.from_code(42) is OperatingState.UNKNOWN  # deduped
+    warnings = [r for r in caplog.records if "42" in r.getMessage()]
+    assert len(warnings) == 1
 
 
 def test_daily_statistics_parses_live_sample() -> None:
