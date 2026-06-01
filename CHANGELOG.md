@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.7](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.6...v0.1.7) (2026-06-01)
+
+
+### Features
+
+* **status:** expose operating_state (idle/cleaning/restoring/leveling) ([5a88871](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/5a8887135b066f08d72dd869c1c05d1a81f4b013))
+* **status:** expose operating_state (idle/cleaning/restoring/leveling) ([8a3a98e](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/8a3a98eaa7f6a11f6e8223c950b09ea753bbbd78))
+
 ## [0.1.6](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.5...v0.1.6) (2026-05-31)
 
 
