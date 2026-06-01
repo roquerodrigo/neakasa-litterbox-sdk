@@ -275,8 +275,9 @@ class NeakasaClient:
                     await self._refresh_iot_session()
                     continue
                 raise
-        # Unreachable — loop body either returns, raises, or continues exactly once.
-        raise NeakasaError("Internal: aliyun retry loop exhausted")
+        # Unreachable — the loop body either returns, raises, or continues
+        # exactly once (attempt 0 -> continue, attempt 1 -> return/raise).
+        raise NeakasaError("Internal: aliyun retry loop exhausted")  # pragma: no cover
 
     def _require_session(self) -> LoginResult:
         """Return the active :class:`LoginResult` or raise if none is held."""

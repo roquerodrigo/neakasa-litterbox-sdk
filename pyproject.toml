@@ -43,7 +43,7 @@ asyncio_mode = "auto"
 addopts = [
     "--cov=src/neakasa_litterbox_sdk",
     "--cov-report=term-missing",
-    "--cov-fail-under=50",
+    "--cov-fail-under=90",
 ]
 
 [dependency-groups]
