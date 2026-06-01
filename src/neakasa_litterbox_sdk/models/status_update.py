@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .operating_state import OperatingState
+
 if TYPE_CHECKING:
     from ..utils._json import JsonObject, JsonValue
 
@@ -71,6 +73,8 @@ def _flatten_changes(items: JsonObject) -> dict[str, JsonValue]:
             out["young_cat_mode"] = value == 1
         elif key == "room_of_bin":
             out["bucket_full"] = value != 0
+        elif key == "bucketStatus" and isinstance(value, int) and not isinstance(value, bool):
+            out["operating_state"] = OperatingState.from_code(value)
         elif key == "latestAddSandTime" and isinstance(value, str):
             out["last_sand_added"] = value
         elif key == "actionLog" and isinstance(value, str):

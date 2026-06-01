@@ -7,6 +7,7 @@ from neakasa_litterbox_sdk import (
     CatGender,
     DailyStatistics,
     DeviceStatus,
+    OperatingState,
     RecordType,
     ToiletRecord,
 )
@@ -125,6 +126,30 @@ def test_device_status_bucket_full_reads_room_of_bin() -> None:
     empty = DeviceStatus.from_response({"room_of_bin": _wrap(0), "bucketStatus": _wrap(1)})
     assert full.bucket_full is True
     assert empty.bucket_full is False
+
+
+def test_device_status_operating_state_reads_bucket_status() -> None:
+    """``bucketStatus`` is the activity code, mapped to ``operating_state``."""
+    assert (
+        DeviceStatus.from_response({"bucketStatus": _wrap(2)}).operating_state
+        is OperatingState.CLEANING
+    )
+    assert (
+        DeviceStatus.from_response({"bucketStatus": _wrap(0)}).operating_state
+        is OperatingState.IDLE
+    )
+    # Absent property → defaults to idle (0); unknown code → UNKNOWN.
+    assert DeviceStatus.from_response({}).operating_state is OperatingState.IDLE
+    assert (
+        DeviceStatus.from_response({"bucketStatus": _wrap(99)}).operating_state
+        is OperatingState.UNKNOWN
+    )
+
+
+def test_operating_state_from_code() -> None:
+    assert OperatingState.from_code(3) is OperatingState.LEVELING
+    assert OperatingState.from_code(1) is OperatingState.RESTORING
+    assert OperatingState.from_code(7) is OperatingState.UNKNOWN
 
 
 def test_daily_statistics_parses_live_sample() -> None:

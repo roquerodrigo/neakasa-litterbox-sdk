@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..utils._json import get_int, get_str
+from .operating_state import OperatingState
 
 if TYPE_CHECKING:
     from ..utils._json import JsonObject, JsonValue
@@ -33,6 +34,7 @@ class DeviceStatus:
     cat_stay_seconds: int
     needs_cleaning: bool
     bucket_full: bool
+    operating_state: OperatingState
     last_sand_added: str
     cleaning_enabled: bool
     auto_level: bool
@@ -65,6 +67,8 @@ class DeviceStatus:
             # 0 = empty), confirmed by diffing the cloud snapshot full↔empty.
             # ``bucketStatus`` stays 0 on this model and never reflected it.
             bucket_full=_property_int(raw, "room_of_bin") != 0,
+            # ``bucketStatus`` is the machine activity code, not the bin level.
+            operating_state=OperatingState.from_code(_property_int(raw, "bucketStatus")),
             last_sand_added=_property_str(raw, "latestAddSandTime"),
             cleaning_enabled=get_int(clean_cfg, "active") == 1,
             auto_level=_property_int(raw, "autoLevel") == 1,
