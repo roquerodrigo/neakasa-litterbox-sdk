@@ -174,6 +174,7 @@ per event type; each is fire-and-forget (no return):
 | `on_silent_mode` / `on_child_lock` / `on_auto_level` / `on_young_cat_mode` / `on_cleaning_enabled` / `on_cat_present` / `on_needs_cleaning` / `on_bucket_full` | `(device_name: str, value: bool) -> None` | The corresponding `DeviceStatus` bool flipping. |
 | `on_sand_percent` / `on_cat_stay_seconds` | `(device_name: str, value: int) -> None` | The corresponding int changing. |
 | `on_last_sand_added` / `on_last_action` | `(device_name: str, value: str) -> None` | The string-typed property updating. |
+| `on_operating_state` | `(device_name: str, value: OperatingState) -> None` | The box changes activity (idle / cleaning / restoring / leveling / cat_appears). |
 | `on_unknown` | `(device_name: str, raw_key: str, raw_value: JsonValue) -> None` | A property the SDK doesn't yet model (raw passthrough). |
 | `on_change` | `(update: StatusUpdate) -> None` | Every push, after the per-event handlers — catchall. |
 
@@ -191,6 +192,7 @@ Use the stream as ``async with client.watch_status() as stream:`` and
 | `cat_stay_seconds` | `int` | How long the cat has been there. |
 | `needs_cleaning` | `bool` | Device flagged a pending clean. |
 | `bucket_full` | `bool` | Waste bin needs emptying. |
+| `operating_state` | `OperatingState` | Activity: idle / cleaning / restoring / leveling / cat_appears (cat inside). |
 | `last_sand_added` | `str` | Server-formatted `"YYYY-MM-DD HH:MM:SS"`. |
 | `last_action` | `str` | Device-reported description of its last action. |
 | `cleaning_enabled` / `auto_level` / `silent_mode` / `child_lock` / `young_cat_mode` | `bool` | Mode switches. |
