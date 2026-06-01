@@ -32,6 +32,7 @@ async def main() -> int:
     print(f"  cat_stay_seconds = {status.cat_stay_seconds}s")
     print(f"  needs_cleaning   = {status.needs_cleaning}")
     print(f"  bucket_full      = {status.bucket_full}")
+    print(f"  operating_state  = {status.operating_state.name}")
     print(f"  last_sand_added  = {status.last_sand_added!r}")
     print(f"  last_action      = {status.last_action!r}")
     print(f"  cleaning_enabled = {status.cleaning_enabled}")

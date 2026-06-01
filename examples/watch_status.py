@@ -34,6 +34,7 @@ async def main() -> int:
             stream.on_cat_present(lambda dn, p: print(f"[{dn}] cat_present={p}"))
             stream.on_needs_cleaning(lambda dn, n: print(f"[{dn}] needs_cleaning={n}"))
             stream.on_bucket_full(lambda dn, f: print(f"[{dn}] bucket_full={f}"))
+            stream.on_operating_state(lambda dn, s: print(f"[{dn}] operating_state={s.name}"))
             stream.on_last_action(lambda dn, a: print(f"[{dn}] last_action={a!r}"))
             stream.on_unknown(lambda dn, key, val: print(f"[{dn}] {key}={val!r}"))
             print("Listening for live status changes. Ctrl-C to stop.")

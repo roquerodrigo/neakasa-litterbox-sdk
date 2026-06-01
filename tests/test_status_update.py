@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from neakasa_litterbox_sdk import OperatingState
 from neakasa_litterbox_sdk.models.status_update import StatusUpdate
 
 
@@ -52,6 +53,15 @@ def test_room_of_bin_maps_to_bucket_full() -> None:
     assert empty is not None
     assert full.changes == {"bucket_full": True}
     assert empty.changes == {"bucket_full": False}
+
+
+def test_bucket_status_maps_to_operating_state() -> None:
+    """``bucketStatus`` pushes become a typed ``operating_state`` change."""
+    cleaning = StatusUpdate.from_push(
+        {"params": {"deviceName": "PB01", "items": {"bucketStatus": {"time": 1, "value": 2}}}}
+    )
+    assert cleaning is not None
+    assert cleaning.changes == {"operating_state": OperatingState.CLEANING}
 
 
 def test_unknown_property_passes_through_under_camelcase() -> None:

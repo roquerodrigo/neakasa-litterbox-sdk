@@ -8,6 +8,7 @@ from .device import Device
 from .device_role import DeviceRole
 from .device_status import DeviceStatus
 from .login_result import LoginResult
+from .operating_state import OperatingState
 from .region import Region
 from .status_update import StatusUpdate
 from .toilet_record import RecordType, ToiletRecord
@@ -21,6 +22,7 @@ __all__ = [
     "DeviceRole",
     "DeviceStatus",
     "LoginResult",
+    "OperatingState",
     "RecordType",
     "Region",
     "StatusUpdate",

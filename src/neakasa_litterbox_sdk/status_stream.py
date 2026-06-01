@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, TypeAlias
 
 from .aliyun.mqtt_auth import derive_mqtt_credentials
 from .aliyun.mqtt_transport import MqttTransport
-from .models import StatusUpdate
+from .models import OperatingState, StatusUpdate
 from .utils._json import JsonValue, loads
 
 if TYPE_CHECKING:
@@ -31,6 +31,7 @@ log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.status_stream")
 OnBoolEvent: TypeAlias = Callable[[str, bool], None]
 OnIntEvent: TypeAlias = Callable[[str, int], None]
 OnStrEvent: TypeAlias = Callable[[str, str], None]
+OnOperatingStateEvent: TypeAlias = Callable[[str, OperatingState], None]
 OnUnknownEvent: TypeAlias = Callable[[str, str, JsonValue], None]
 OnAnyEvent: TypeAlias = Callable[[StatusUpdate], None]
 
@@ -87,6 +88,7 @@ class StatusStream:
         self._on_cat_present: OnBoolEvent | None = None
         self._on_needs_cleaning: OnBoolEvent | None = None
         self._on_bucket_full: OnBoolEvent | None = None
+        self._on_operating_state: OnOperatingStateEvent | None = None
         self._on_sand_percent: OnIntEvent | None = None
         self._on_cat_stay_seconds: OnIntEvent | None = None
         self._on_last_sand_added: OnStrEvent | None = None
@@ -169,6 +171,15 @@ class StatusStream:
     def on_bucket_full(self, fn: OnBoolEvent) -> None:
         """Fires with ``(device_name, full)`` when the waste bin status flips."""
         self._on_bucket_full = fn
+
+    def on_operating_state(self, fn: OnOperatingStateEvent) -> None:
+        """Fires with ``(device_name, state)`` when the box changes activity.
+
+        ``state`` is an :class:`OperatingState` (idle / cleaning /
+        restoring / leveling); unrecognised codes arrive as
+        :attr:`OperatingState.UNKNOWN`.
+        """
+        self._on_operating_state = fn
 
     def on_sand_percent(self, fn: OnIntEvent) -> None:
         """Fires with ``(device_name, percent_0_to_100)`` on each litter-level update."""
@@ -261,6 +272,10 @@ class StatusStream:
         if key == "bucket_full" and isinstance(value, bool):
             if self._on_bucket_full is not None:
                 self._on_bucket_full(device_name, value)
+            return
+        if key == "operating_state" and isinstance(value, OperatingState):
+            if self._on_operating_state is not None:
+                self._on_operating_state(device_name, value)
             return
         if key == "sand_percent" and isinstance(value, int) and not isinstance(value, bool):
             if self._on_sand_percent is not None:
