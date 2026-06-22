@@ -3,6 +3,12 @@
 ## [0.1.10](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.9...v0.1.10) (2026-06-21)
 
 
+### Bug Fixes
+
+* **region:** point EU cluster to euapi.neakasa.com — `eu.neakasa.com` is the Shopify storefront and returned HTTP 404 on `/api/login`, blocking login for European users ([0fba072](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/0fba0720)) ([roquerodrigo/ha-neakasa-litterbox#32](https://github.com/roquerodrigo/ha-neakasa-litterbox/issues/32))
+* **auth:** treat server code 3019 as invalid credentials (account not registered on the cluster) ([b9cbfc4](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/b9cbfc4e))
+
+
 ### Documentation
 
 * fix stale CODE_STYLE.md references ([#24](https://github.com/roquerodrigo/neakasa-litterbox-sdk/issues/24)) ([f5c5f6f](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/f5c5f6f74a1d7acfa6e7203a62e4c8673e9cd0a4))
