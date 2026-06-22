@@ -35,7 +35,7 @@ def test_session_expired_codes_dispatch_to_session_expired_error(code: int) -> N
     assert isinstance(exc_info.value, AuthenticationError)
 
 
-@pytest.mark.parametrize("code", [10060, 10061, 10192])
+@pytest.mark.parametrize("code", [3019, 10060, 10061, 10192])
 def test_invalid_credentials_codes_dispatch_to_invalid_credentials_error(code: int) -> None:
     with pytest.raises(InvalidCredentialsError) as exc_info:
         _unwrap_envelope(_envelope(code), context="probe", auth=True)
