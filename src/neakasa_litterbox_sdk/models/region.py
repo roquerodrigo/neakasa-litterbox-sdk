@@ -8,14 +8,15 @@ from enum import Enum
 class Region(Enum):
     """Global Neakasa cloud cluster. Each region is a distinct backend.
 
-    The bootstrap service (``/global/baseurl/country``) maps every country
-    code to one of three clusters — verified against the live server. The
-    Chinese mainland cluster (``region.neabot.com.cn``) is intentionally not
-    exposed.
+    Every country code maps to one of three clusters — verified against the
+    live servers. Note the EU API host is ``euapi.neakasa.com``, not
+    ``eu.neakasa.com``: the bare ``eu`` subdomain serves the Shopify
+    storefront (returns HTTP 404 on ``/api/login``). The Chinese mainland
+    cluster (``region.neabot.com.cn``) is intentionally not exposed.
     """
 
     US = "https://us.neakasa.com/api"
-    EU = "https://eu.neakasa.com/api"
+    EU = "https://euapi.neakasa.com/api"
     AP = "https://ap.neakasa.com/api"
 
     @property

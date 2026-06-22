@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from .auth import AuthenticationError
 
-INVALID_CREDENTIALS_CODES: frozenset[int] = frozenset({10060, 10061, 10192})
+INVALID_CREDENTIALS_CODES: frozenset[int] = frozenset({3019, 10060, 10061, 10192})
 """Server codes that mean the user or password is wrong.
 
+- ``3019`` — account not found on this cluster (wrong region / not registered)
 - ``10060`` — user does not exist
 - ``10061`` — wrong account or password
 - ``10192`` — password incorrect (alternate path)
