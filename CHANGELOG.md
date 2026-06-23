@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.11](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.10...v0.1.11) (2026-06-23)
+
+
+### Bug Fixes
+
+* **client:** use regional aliyun gateway for iot calls ([4f41aca](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/4f41aca43d443d612edd16684195af69b916c20e))
+* **client:** use regional aliyun gateway for iot calls ([7d1a4a2](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/7d1a4a29cfbc495ee726a9238ccc44253f361fc5))
+
+
+### Documentation
+
+* **changelog:** backfill EU + 3019 fixes under 0.1.10 ([9d9bc95](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/9d9bc95cd781788e7a639cd400b198def220d887))
+* **changelog:** record EU cluster + 3019 fixes under 0.1.10 ([c6e7c14](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/c6e7c14e53fec19ec6916e99f55464cf2b4340d1))
+
 ## [0.1.10](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.9...v0.1.10) (2026-06-21)
 
 
