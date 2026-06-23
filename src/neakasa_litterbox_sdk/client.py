@@ -6,7 +6,8 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from .aliyun.handshake import exchange_for_iot_token
+from .aliyun.handshake import exchange_for_iot_session
+from .aliyun.signing import GATEWAY_HOST_US
 from .aliyun.transport import AliyunTransport
 from .auth.session_token import generate_session_token
 from .auth.transport import HttpTransport
@@ -74,6 +75,7 @@ class NeakasaClient:
         self._language = language
         self._transport = HttpTransport(timeout=timeout)
         self._aliyun = AliyunTransport(timeout=timeout)
+        self._aliyun_host = GATEWAY_HOST_US
         self._login_result: LoginResult | None = None
         self._device_index: dict[str, Device] = {}
 
@@ -125,6 +127,8 @@ class NeakasaClient:
         "nothing changed".
         """
         self._login_result = cached
+        if self._login_result is not None:
+            self._aliyun_host = self._login_result.iot_host
         if self._login_result is None:
             await self._login_rest()
         if not self._require_session().iot_token:
@@ -263,6 +267,7 @@ class NeakasaClient:
             response = await self._aliyun.call(
                 path,
                 api_version=api_version,
+                host=self._aliyun_host,
                 iot_token=self._require_iot_session(),
                 payload=payload,
                 language=language,
@@ -557,14 +562,15 @@ class NeakasaClient:
         calls this lazily when no IoT token is cached.
         """
         session = self._require_session()
-        iot_token = await exchange_for_iot_token(
+        iot_session = await exchange_for_iot_session(
             self._aliyun,
             session.user_info.ali_authentication_token,
             language=f"{self._language}-US",
         )
-        self._login_result = session.with_iot_token(iot_token)
-        log.debug("IoT session established for %s", self._email)
-        return iot_token
+        self._aliyun_host = iot_session.api_gateway_endpoint
+        self._login_result = session.with_iot_session(iot_session.iot_token, self._aliyun_host)
+        log.debug("IoT session established for %s via host %s", self._email, self._aliyun_host)
+        return iot_session.iot_token
 
     def _require_iot_session(self) -> str:
         """Return the cached ``iotToken`` or raise if the IoT session is missing."""

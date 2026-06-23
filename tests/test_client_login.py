@@ -36,7 +36,9 @@ def _client() -> NeakasaClient:
     return NeakasaClient(email="user@example.com", password="pw", region=Region.US)
 
 
-async def test_login_fresh_runs_rest_then_handshake(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_login_fresh_runs_rest_then_handshake(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """No cache: a REST login then the Aliyun handshake both run, in order."""
     client = _client()
     calls: list[str] = []
@@ -77,6 +79,23 @@ async def test_login_cached_with_iot_token_mints_nothing(
     assert result is cached
     rest_mock.assert_not_awaited()
     aliyun_mock.assert_not_awaited()
+
+
+async def test_login_cached_with_iot_token_restores_cached_aliyun_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _client()
+    monkeypatch.setattr(client, "_login_rest", AsyncMock())
+    monkeypatch.setattr(client, "_authenticate_aliyun", AsyncMock())
+
+    cached = _login_result(iot_token="cached-iot-token").with_iot_session(
+        "cached-iot-token",
+        "eu-central-1.api-iot.aliyuncs.com",
+    )
+    result = await client.login(cached=cached)
+
+    assert result is cached
+    assert client._aliyun_host == "eu-central-1.api-iot.aliyuncs.com"
 
 
 async def test_login_cached_without_iot_token_only_handshakes(

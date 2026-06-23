@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     from ..utils._json import JsonObject, JsonValue
 
 
+_DEFAULT_IOT_HOST = "us-east-1.api-iot.aliyuncs.com"
+
+
 @dataclass(frozen=True, slots=True)
 class LoginResult:
     """Everything the SDK needs to keep talking to Neakasa after login.
@@ -36,10 +39,15 @@ class LoginResult:
     user_info: UserInfo
     issued_at: float
     iot_token: str = ""
+    iot_host: str = _DEFAULT_IOT_HOST
 
     def with_iot_token(self, iot_token: str) -> LoginResult:
         """Return a copy with ``iot_token`` set (the dataclass is frozen)."""
         return dataclasses.replace(self, iot_token=iot_token)
+
+    def with_iot_session(self, iot_token: str, iot_host: str) -> LoginResult:
+        """Return a copy with both ``iot_token`` and ``iot_host`` updated."""
+        return dataclasses.replace(self, iot_token=iot_token, iot_host=iot_host)
 
     @classmethod
     def from_json(cls, raw: JsonObject) -> LoginResult:
@@ -73,6 +81,7 @@ class LoginResult:
             "user_info": self.user_info.to_dict(),
             "issued_at": self.issued_at,
             "iot_token": self.iot_token,
+            "iot_host": self.iot_host,
         }
 
     @classmethod
@@ -86,6 +95,7 @@ class LoginResult:
             user_info=UserInfo.from_dict(get_object(data, "user_info")),
             issued_at=get_float(data, "issued_at"),
             iot_token=get_str(data, "iot_token"),
+            iot_host=get_str(data, "iot_host", default=_DEFAULT_IOT_HOST),
         )
 
     def age_seconds(self, now: float | None = None) -> float:

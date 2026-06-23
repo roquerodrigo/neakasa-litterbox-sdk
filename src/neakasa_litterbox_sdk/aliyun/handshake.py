@@ -20,6 +20,7 @@ response so the rest of the chain follows the user's region.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .._credentials import APP_KEY
@@ -35,13 +36,37 @@ log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.aliyun.handshake"
 _BOOTSTRAP_HOST = "cn-shanghai.api-iot.aliyuncs.com"
 
 
+@dataclass(frozen=True, slots=True)
+class AliyunSession:
+    """Aliyun IoT session details required for subsequent gateway calls."""
+
+    iot_token: str
+    api_gateway_endpoint: str
+
+
 async def exchange_for_iot_token(
     transport: AliyunTransport,
     ali_authentication_token: str,
     *,
     language: str = "en-US",
 ) -> str:
-    """Run the 4-step OpenAccount handshake and return the ``iotToken``."""
+    """Run the 4-step OpenAccount handshake and return only the ``iotToken``."""
+    return (
+        await exchange_for_iot_session(
+            transport,
+            ali_authentication_token,
+            language=language,
+        )
+    ).iot_token
+
+
+async def exchange_for_iot_session(
+    transport: AliyunTransport,
+    ali_authentication_token: str,
+    *,
+    language: str = "en-US",
+) -> AliyunSession:
+    """Run the 4-step OpenAccount handshake and return token + regional host."""
     if not ali_authentication_token:
         raise NeakasaError(
             "Failed to authenticate Aliyun: aliAuthenticationToken is empty",
@@ -49,7 +74,8 @@ async def exchange_for_iot_token(
     oa_endpoint, api_endpoint = await _get_region(transport, ali_authentication_token, language)
     vid = await _get_vid(transport, oa_endpoint)
     sid = await _get_sid(transport, oa_endpoint, vid, ali_authentication_token)
-    return await _create_iot_token(transport, api_endpoint, sid, language)
+    iot_token = await _create_iot_token(transport, api_endpoint, sid, language)
+    return AliyunSession(iot_token=iot_token, api_gateway_endpoint=api_endpoint)
 
 
 async def _get_region(
