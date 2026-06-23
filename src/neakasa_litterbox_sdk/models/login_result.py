@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ..aliyun.signing import GATEWAY_HOST_US
 from ..crypto import decrypt_login_token
 from ..utils._json import get_float, get_object, get_str
 from .user_info import UserInfo
@@ -15,7 +16,10 @@ if TYPE_CHECKING:
     from ..utils._json import JsonObject, JsonValue
 
 
-_DEFAULT_IOT_HOST = "us-east-1.api-iot.aliyuncs.com"
+# Default for sessions deserialized before ``iot_host`` was persisted; the
+# regional host is resolved during the handshake. Kept in sync with the
+# transport's fallback via the single ``GATEWAY_HOST_US`` source of truth.
+_DEFAULT_IOT_HOST = GATEWAY_HOST_US
 
 
 @dataclass(frozen=True, slots=True)
