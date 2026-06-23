@@ -79,6 +79,23 @@ async def test_login_cached_with_iot_token_mints_nothing(
     aliyun_mock.assert_not_awaited()
 
 
+async def test_login_cached_with_iot_token_restores_cached_aliyun_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _client()
+    monkeypatch.setattr(client, "_login_rest", AsyncMock())
+    monkeypatch.setattr(client, "_authenticate_aliyun", AsyncMock())
+
+    cached = _login_result(iot_token="cached-iot-token").with_iot_session(
+        "cached-iot-token",
+        "eu-central-1.api-iot.aliyuncs.com",
+    )
+    result = await client.login(cached=cached)
+
+    assert result is cached
+    assert client._aliyun_host == "eu-central-1.api-iot.aliyuncs.com"
+
+
 async def test_login_cached_without_iot_token_only_handshakes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -113,6 +113,25 @@ async def test_aliyun_call_authed_passes_through_on_first_success(
     assert call_mock.await_count == 1
 
 
+async def test_aliyun_call_authed_uses_current_regional_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _make_client(monkeypatch)
+    client._aliyun_host = "eu-central-1.api-iot.aliyuncs.com"
+    call_mock = AsyncMock(return_value={"code": 200, "data": {"ok": True}})
+    monkeypatch.setattr(client._aliyun, "call", call_mock)
+
+    await client._aliyun_call_authed(
+        "/uc/listBindingByAccount",
+        api_version="1.0.8",
+        payload={},
+        language="en-US",
+        context="list devices",
+    )
+
+    assert call_mock.await_args.kwargs["host"] == "eu-central-1.api-iot.aliyuncs.com"
+
+
 async def test_refresh_iot_session_falls_back_to_full_relogin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

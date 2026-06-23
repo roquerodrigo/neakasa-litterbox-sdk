@@ -11,7 +11,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from neakasa_litterbox_sdk.aliyun.handshake import exchange_for_iot_token
+from neakasa_litterbox_sdk.aliyun.handshake import (
+    exchange_for_iot_session,
+    exchange_for_iot_token,
+)
 from neakasa_litterbox_sdk.exceptions import ApiError, AuthenticationError, NeakasaError
 
 
@@ -63,6 +66,16 @@ async def test_full_handshake_returns_iot_token() -> None:
     assert token == "iot-token-789"
     assert transport.call.await_count == 2
     assert transport.call_oa.await_count == 2
+
+
+async def test_full_handshake_returns_iot_session_with_endpoint() -> None:
+    transport = _transport(
+        call_side=[_region_response(), _token_response()],
+        oa_side=[_vid_response(), _sid_response()],
+    )
+    session = await exchange_for_iot_session(transport, "ali-auth-token")
+    assert session.iot_token == "iot-token-789"
+    assert session.api_gateway_endpoint == "api.example.com"
 
 
 async def test_empty_auth_token_raises_before_network() -> None:

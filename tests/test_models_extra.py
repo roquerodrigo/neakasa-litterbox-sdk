@@ -41,6 +41,38 @@ def test_login_result_round_trips_through_dict() -> None:
     assert restored == original
 
 
+def test_login_result_round_trips_non_default_iot_host() -> None:
+    """A regional ``iot_host`` survives the dict round-trip unchanged."""
+    original = LoginResult(
+        user_id="400068852",
+        user_token="utoken",
+        aes_key="key",
+        aes_iv="iv",
+        user_info=UserInfo(1, "u", 2, "tok"),
+        issued_at=1_700_000_000.0,
+        iot_token="iot",
+        iot_host="eu-central-1.api-iot.aliyuncs.com",
+    )
+    restored = LoginResult.from_dict(original.to_dict())
+    assert restored == original
+    assert restored.iot_host == "eu-central-1.api-iot.aliyuncs.com"
+
+
+def test_login_result_from_dict_defaults_iot_host_for_legacy_cache() -> None:
+    """Caches serialized before ``iot_host`` existed fall back to the US host."""
+    legacy = {
+        "user_id": "1",
+        "user_token": "t",
+        "aes_key": "k",
+        "aes_iv": "iv",
+        "user_info": UserInfo(1, "u", 2, "tok").to_dict(),
+        "issued_at": 1_000.0,
+        "iot_token": "iot",
+    }
+    restored = LoginResult.from_dict(legacy)
+    assert restored.iot_host == "us-east-1.api-iot.aliyuncs.com"
+
+
 def test_login_result_age_seconds() -> None:
     result = LoginResult(
         user_id="1",

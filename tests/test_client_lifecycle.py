@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from neakasa_litterbox_sdk import ApiError, LoginResult, NeakasaClient, UserInfo
+from neakasa_litterbox_sdk.aliyun.handshake import AliyunSession
 from neakasa_litterbox_sdk.client import _expect_object
 
 
@@ -83,8 +84,13 @@ async def test_authenticate_aliyun_stores_iot_token(monkeypatch: pytest.MonkeyPa
     client = NeakasaClient(email="user@example.com", password="pw")
     client._login_result = _login_result()
     monkeypatch.setattr(
-        "neakasa_litterbox_sdk.client.exchange_for_iot_token",
-        AsyncMock(return_value="fresh-iot-token"),
+        "neakasa_litterbox_sdk.client.exchange_for_iot_session",
+        AsyncMock(
+            return_value=AliyunSession(
+                iot_token="fresh-iot-token",
+                api_gateway_endpoint="eu-central-1.api-iot.aliyuncs.com",
+            )
+        ),
     )
 
     token = await client._authenticate_aliyun()
@@ -92,6 +98,7 @@ async def test_authenticate_aliyun_stores_iot_token(monkeypatch: pytest.MonkeyPa
     assert token == "fresh-iot-token"
     assert client.login_result is not None
     assert client.login_result.iot_token == "fresh-iot-token"
+    assert client.login_result.iot_host == "eu-central-1.api-iot.aliyuncs.com"
 
 
 def test_expect_object_passes_through_mapping() -> None:
