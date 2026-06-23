@@ -28,9 +28,7 @@ def _login_result(*, iot_token: str = "") -> LoginResult:
     )
 
 
-async def test_close_delegates_to_both_transports(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_close_delegates_to_both_transports(monkeypatch: pytest.MonkeyPatch) -> None:
     client = NeakasaClient(email="user@example.com", password="pw")
     rest_close = AsyncMock()
     aliyun_close = AsyncMock()
@@ -43,9 +41,7 @@ async def test_close_delegates_to_both_transports(
     aliyun_close.assert_awaited_once()
 
 
-async def test_async_context_manager_closes_on_exit(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_async_context_manager_closes_on_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     client = NeakasaClient(email="user@example.com", password="pw")
     close_mock = AsyncMock()
     monkeypatch.setattr(client, "close", close_mock)
@@ -83,9 +79,7 @@ async def test_login_rest_parses_and_stores(monkeypatch: pytest.MonkeyPatch) -> 
     assert client.login_result is result
 
 
-async def test_authenticate_aliyun_stores_iot_token(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_authenticate_aliyun_stores_iot_token(monkeypatch: pytest.MonkeyPatch) -> None:
     """``_authenticate_aliyun`` runs the handshake and stamps the iotToken."""
     client = NeakasaClient(email="user@example.com", password="pw")
     client._login_result = _login_result()

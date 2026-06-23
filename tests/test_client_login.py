@@ -36,9 +36,7 @@ def _client() -> NeakasaClient:
     return NeakasaClient(email="user@example.com", password="pw", region=Region.US)
 
 
-async def test_login_fresh_runs_rest_then_handshake(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_login_fresh_runs_rest_then_handshake(monkeypatch: pytest.MonkeyPatch) -> None:
     """No cache: a REST login then the Aliyun handshake both run, in order."""
     client = _client()
     calls: list[str] = []
