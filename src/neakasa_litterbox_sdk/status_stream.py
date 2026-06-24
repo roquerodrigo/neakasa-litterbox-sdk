@@ -112,7 +112,9 @@ class StatusStream:
         """Open the MQTT session, subscribe, and bind to the user's account."""
         if self._transport is not None:
             return
-        credentials = await derive_mqtt_credentials(self._aliyun)
+        credentials = await derive_mqtt_credentials(
+            self._aliyun, gateway_host=self._login.iot_host
+        )
         transport = MqttTransport(
             credentials,
             on_message=self._handle_message,

@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING
 from .._credentials import APP_KEY, APP_SECRET
 from ..exceptions import ApiError
 from ..utils._json import get_int, get_str
+from .signing import GATEWAY_HOST_US
 
 if TYPE_CHECKING:
     from ..utils._json import JsonObject
@@ -41,14 +42,13 @@ if TYPE_CHECKING:
 
 _BOOTSTRAP_PATH = "/app/aepauth/handle"
 _BOOTSTRAP_API_VERSION = "1.0.0"
-# The bootstrap REST and the broker host both have to be regional —
-# verified live, ``api.link.aliyun.com`` (the SDK's default) returns a
-# triple whose broker is in cn-shanghai and rejects bind from an
-# iotToken minted in any other region. Sticking to the same region the
-# rest of the SDK targets (us-east-1) keeps bind happy.
-_BOOTSTRAP_HOST = "us-east-1.api-iot.aliyuncs.com"
-
-_MQTT_HOST_TEMPLATE = "{product_key}.iot-as-mqtt.us-east-1.aliyuncs.com"
+# The bootstrap REST and the broker host both have to live in the SAME
+# Aliyun region as the iotToken — a triple/bind minted in another region is
+# rejected by the broker (``bind_account`` returns code 2043). The region is
+# whatever the OpenAccount handshake resolved for this account
+# (``LoginResult.iot_host`` / ``NeakasaClient._aliyun_host``); callers thread
+# it in via ``gateway_host``. Falls back to the US gateway when none is given.
+_MQTT_HOST_TEMPLATE = "{product_key}.iot-as-mqtt.{region}.aliyuncs.com"
 # Aliyun's mobile-channel broker speaks TLS on port 1883, not the standard
 # 8883 — the SDK's ``DEFAULT_HOST`` constant pins it explicitly and the
 # ``ssl://`` prefix is applied separately based on ``SECURE_MODE``.
@@ -74,9 +74,33 @@ class MqttCredentials:
     device_name: str
 
 
-async def derive_mqtt_credentials(transport: AliyunTransport) -> MqttCredentials:
-    """Run the bootstrap REST and return the resulting MQTT credentials."""
-    triple = await _fetch_triple(transport)
+def _region_from_gateway(gateway_host: str) -> str:
+    """Extract the Aliyun region id from an ``<region>.api-iot.aliyuncs.com`` host.
+
+    Falls back to the US region when ``gateway_host`` is empty or does not
+    match the expected shape, so behaviour is unchanged for callers that
+    don't thread a region through.
+    """
+    region = (gateway_host or "").split(".api-iot.aliyuncs.com", 1)[0]
+    return region or GATEWAY_HOST_US.split(".api-iot.aliyuncs.com", 1)[0]
+
+
+async def derive_mqtt_credentials(
+    transport: AliyunTransport,
+    *,
+    gateway_host: str = GATEWAY_HOST_US,
+) -> MqttCredentials:
+    """Run the bootstrap REST and return the resulting MQTT credentials.
+
+    ``gateway_host`` is the regional IoT API gateway the OpenAccount
+    handshake resolved for this account (e.g.
+    ``eu-central-1.api-iot.aliyuncs.com``). The bootstrap REST and the MQTT
+    broker must both target that region, otherwise ``bind_account`` is
+    rejected with code 2043. Defaults to the US gateway for backwards
+    compatibility.
+    """
+    region = _region_from_gateway(gateway_host)
+    triple = await _fetch_triple(transport, host=gateway_host or GATEWAY_HOST_US)
     product_key = get_str(triple, "productKey")
     device_name = get_str(triple, "deviceName")
     device_secret = get_str(triple, "deviceSecret")
@@ -99,7 +123,7 @@ async def derive_mqtt_credentials(transport: AliyunTransport) -> MqttCredentials
     )
 
     return MqttCredentials(
-        host=_MQTT_HOST_TEMPLATE.format(product_key=product_key),
+        host=_MQTT_HOST_TEMPLATE.format(product_key=product_key, region=region),
         port=_MQTT_PORT,
         client_id=f"{bare_client_id}{_MQTT_CLIENT_ID_SUFFIX}",
         username=bare_client_id,
@@ -109,13 +133,13 @@ async def derive_mqtt_credentials(transport: AliyunTransport) -> MqttCredentials
     )
 
 
-async def _fetch_triple(transport: AliyunTransport) -> JsonObject:
-    """POST ``/app/aepauth/handle`` and return the response ``data`` map."""
+async def _fetch_triple(transport: AliyunTransport, *, host: str) -> JsonObject:
+    """POST ``/app/aepauth/handle`` on ``host`` and return the response ``data`` map."""
     auth_info = _build_auth_info()
     response = await transport.call(
         _BOOTSTRAP_PATH,
         api_version=_BOOTSTRAP_API_VERSION,
-        host=_BOOTSTRAP_HOST,
+        host=host,
         payload={"authInfo": auth_info},
     )
     code = get_int(response, "code", default=-1)
