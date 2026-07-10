@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.11...v0.1.12) (2026-07-10)
+
+
+### Bug Fixes
+
+* **mqtt:** bind to the account's resolved Aliyun region, not hardcoded us-east-1 ([f83d742](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/f83d74206a13fa5263e185eb43fbfeafa2d18bd4))
+
 ## [0.1.11](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.10...v0.1.11) (2026-06-23)
 
 
