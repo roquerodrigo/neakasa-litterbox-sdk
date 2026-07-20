@@ -22,3 +22,11 @@ uv run pytest
 
 Both gates mirror CI. Skip this only when the change literally cannot
 affect lint or tests (e.g., README-only edits).
+
+## Downstream consumer
+
+This package is published to PyPI and consumed by the `ha-neakasa-litterbox`
+Home Assistant integration (sibling repo), which pins an **exact** version
+(`neakasa-litterbox-sdk==X.Y.Z`) in both its `pyproject.toml` and
+`custom_components/neakasa_litterbox/manifest.json`. A new release here does
+not reach the integration until that pin is bumped there.
