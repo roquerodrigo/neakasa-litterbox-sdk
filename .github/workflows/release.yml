@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to (re)publish to PyPI, e.g. v1.1.0. Skips release-please."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success')
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: roquerodrigo/.github/.github/workflows/sdk-release.yml@v2
+    with:
+      pypi-package: neakasa-litterbox-sdk
+      dispatch-tag: ${{ inputs.tag || '' }}
+    secrets: inherit
