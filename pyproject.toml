@@ -67,6 +67,9 @@ target-version = "py311"
 line-length = 100
 src = ["src", "tests", "examples"]
 
+[tool.ruff.format]
+exclude = ["*.md"]  # ruff 0.16 formats Python blocks in Markdown; docs keep their own layout
+
 [tool.ruff.lint]
 select = [
     "E",
