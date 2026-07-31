@@ -24,7 +24,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: roquerodrigo/.github/.github/workflows/sdk-release.yml@v2
+    uses: roquerodrigo/.github/.github/workflows/sdk-release.yml@v3
     with:
       pypi-package: neakasa-litterbox-sdk
       dispatch-tag: ${{ inputs.tag || '' }}
