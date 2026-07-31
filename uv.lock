@@ -817,7 +817,7 @@ wheels = [
 
 [[package]]
 name = "neakasa-litterbox-sdk"
-version = "0.1.5"
+version = "0.1.12"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
