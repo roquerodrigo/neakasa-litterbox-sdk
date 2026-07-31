@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.12...v0.1.13) (2026-07-31)
+
+
+### Documentation
+
+* update CLAUDE.md ([95f3755](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/95f3755a85d4a70feb3ffc1ddce59bd41f9198eb))
+
 ## [0.1.12](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.11...v0.1.12) (2026-07-10)
 
 
