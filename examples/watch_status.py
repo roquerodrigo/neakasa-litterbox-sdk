@@ -3,12 +3,6 @@
 Registers a handler per event type and blocks until Ctrl-C. Run with::
 
     uv run python examples/watch_status.py
-
-The Aliyun broker's TLS chain still anchors at the legacy GlobalSign
-Root CA, which recent ``certifi`` bundles drop. This example uses
-``tls_insecure=True`` to skip cert validation — fine for local
-experiments; in production point ``ca_certs`` at a bundle that still
-carries that root.
 """
 
 from __future__ import annotations
@@ -25,7 +19,7 @@ async def main() -> int:
 
     try:
         client, _ = await authenticate()
-        async with client.watch_status(tls_insecure=True) as stream:
+        async with client.watch_status() as stream:
             stream.on_silent_mode(lambda dn, on: print(f"[{dn}] silent_mode={on}"))
             stream.on_child_lock(lambda dn, on: print(f"[{dn}] child_lock={on}"))
             stream.on_auto_level(lambda dn, on: print(f"[{dn}] auto_level={on}"))

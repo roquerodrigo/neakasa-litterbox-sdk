@@ -104,7 +104,7 @@ All I/O methods are coroutines (prefix every call with `await`).
 | `set_auto_level` | `async (device_name: str, enabled: bool) -> None` | Toggle automatic litter-leveling after each clean cycle. |
 | `set_silent_mode` | `async (device_name: str, enabled: bool) -> None` | Suppress motor / status sounds while on. |
 | `set_child_lock` | `async (device_name: str, enabled: bool) -> None` | Ignore manual button presses while on. |
-| `watch_status` | `(*, ca_certs=None, tls_insecure=False) -> StatusStream` | Build a live MQTT push stream — use as an `async with` context manager and register per-event handlers on the returned stream. |
+| `watch_status` | `(*, ca_certs=None, tls_context=None) -> StatusStream` | Build a live MQTT push stream — use as an `async with` context manager and register per-event handlers on the returned stream. See [Broker TLS](#broker-tls). |
 | `close` | `async () -> None` | Close the underlying HTTP sessions. Idempotent; `async with client` also does this on exit. |
 
 | Property | Type | |
@@ -310,6 +310,29 @@ async def call_and_persist(client, cache):
 `InvalidCredentialsError` and bare `AuthenticationError` propagate
 without retry — they signal a hard failure (wrong password, account
 locked, …) that re-login cannot fix.
+
+## Broker TLS
+
+`watch_status()` always verifies the broker's certificate chain and
+hostname. The MQTT endpoint
+(`<productKey>.iot-as-mqtt.<region>.aliyuncs.com`) is served by the
+`GlobalSign GCC R1 OV TLS CA 2025` intermediate, which chains to the
+1998 `GlobalSign Root CA` — a root current trust stores no longer carry,
+so the system store alone fails the handshake with `unable to get local
+issuer certificate`. The SDK ships that root and trusts it **in addition
+to** the system store, scoped to this MQTT context.
+
+Two optional overrides:
+
+- `ca_certs="/path/to/bundle.pem"` — replaces the system store with your
+  own bundle. The shipped broker root is still trusted on top of it.
+- `tls_context=<ssl.SSLContext>` — takes over entirely. Useful for
+  callers that build a context off the event loop and reuse it (Home
+  Assistant does this); you own verification from that point on.
+
+The pinned root and the intermediate both expire on **2028-01-28**. The
+broker has to move to a currently-trusted root before then, after which
+the system store covers it and the bundled file can be dropped.
 
 ## Contributing
 

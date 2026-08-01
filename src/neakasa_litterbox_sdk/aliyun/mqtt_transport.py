@@ -30,6 +30,7 @@ import aiomqtt
 
 from ..exceptions import ApiError, TransportError
 from ..utils._json import get_int, get_str, loads
+from .broker_ca import BROKER_ROOT_CA_PATH
 
 if TYPE_CHECKING:
     from ..utils._json import JsonObject
@@ -50,20 +51,16 @@ class MqttTransport:
         *,
         keepalive: int = 60,
         ca_certs: str | None = None,
-        tls_insecure: bool = False,
         tls_context: ssl.SSLContext | None = None,
     ) -> None:
         self._credentials = credentials
         self._on_message = on_message
         self._keepalive = keepalive
-        # Aliyun's broker still chains to the legacy GlobalSign Root CA
-        # (1998), which most modern CA bundles have dropped. Point
-        # ``ca_certs`` at a bundle that still carries that root, or set
-        # ``tls_insecure=True`` if hostname/cert validation is acceptable
-        # to skip for your environment. ``tls_context`` short-circuits
-        # both — caller hands in a fully-built :class:`ssl.SSLContext`.
+        # ``ca_certs`` replaces the system trust store; the bundled
+        # broker root is added on top either way. ``tls_context``
+        # short-circuits both — caller hands in a fully-built
+        # :class:`ssl.SSLContext`.
         self._ca_certs = ca_certs
-        self._tls_insecure = tls_insecure
         # Building the context calls ``load_default_certs`` /
         # ``load_verify_locations`` synchronously (file I/O) — defer it
         # to :meth:`connect` so we can run it in an executor and avoid
@@ -74,13 +71,10 @@ class MqttTransport:
         self._pending_replies: dict[str, asyncio.Future[JsonObject]] = {}
 
     def _build_tls_context(self) -> ssl.SSLContext:
-        """Build the SSL context off-thread (blocking file I/O)."""
-        if self._tls_insecure:
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            return ctx
-        return ssl.create_default_context(cafile=self._ca_certs)
+        """Build the verifying SSL context off-thread (blocking file I/O)."""
+        context = ssl.create_default_context(cafile=self._ca_certs)
+        context.load_verify_locations(cafile=str(BROKER_ROOT_CA_PATH))
+        return context
 
     @property
     def topic_prefix(self) -> str:
