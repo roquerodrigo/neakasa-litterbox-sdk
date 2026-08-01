@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.12...v0.2.0) (2026-08-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* `tls_insecure` is gone from `watch_status()`, `StatusStream` and `MqttTransport`. `ca_certs` and `tls_context` remain for callers that need to supply their own trust material.
+
+### Features
+
+* verify the MQTT broker's TLS chain ([a844b32](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/a844b3294326b2be8cc5645a10d261db0b47fdfc))
+
+
+### Documentation
+
+* update CLAUDE.md ([95f3755](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/95f3755a85d4a70feb3ffc1ddce59bd41f9198eb))
+
 ## [0.1.12](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.11...v0.1.12) (2026-07-10)
 
 
