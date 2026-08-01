@@ -6,8 +6,11 @@ import contextlib
 import ssl
 from unittest.mock import AsyncMock, MagicMock
 
+from neakasa_litterbox_sdk.aliyun.broker_ca import BROKER_ROOT_CA_PATH
 from neakasa_litterbox_sdk.aliyun.mqtt_auth import MqttCredentials
 from neakasa_litterbox_sdk.aliyun.mqtt_transport import MqttTransport
+
+_BROKER_ROOT_COMMON_NAME = "GlobalSign Root CA"
 
 
 def _credentials() -> MqttCredentials:
@@ -22,25 +25,42 @@ def _credentials() -> MqttCredentials:
     )
 
 
-def test_build_tls_context_insecure_skips_validation() -> None:
-    transport = MqttTransport(_credentials(), AsyncMock(), tls_insecure=True)
-    ctx = transport._build_tls_context()
-    assert ctx.check_hostname is False
-    assert ctx.verify_mode is ssl.CERT_NONE
+def _subject_common_names(context: ssl.SSLContext) -> set[str]:
+    return {
+        value
+        for cert in context.get_ca_certs()
+        for rdn in cert["subject"]
+        for key, value in rdn
+        if key == "commonName"
+    }
 
 
-def test_build_tls_context_secure_validates() -> None:
-    transport = MqttTransport(_credentials(), AsyncMock(), tls_insecure=False)
+def test_build_tls_context_always_validates() -> None:
+    transport = MqttTransport(_credentials(), AsyncMock())
     ctx = transport._build_tls_context()
     assert ctx.check_hostname is True
     assert ctx.verify_mode is ssl.CERT_REQUIRED
+
+
+def test_build_tls_context_trusts_bundled_broker_root() -> None:
+    transport = MqttTransport(_credentials(), AsyncMock())
+    ctx = transport._build_tls_context()
+    assert _BROKER_ROOT_COMMON_NAME in _subject_common_names(ctx)
+
+
+def test_build_tls_context_keeps_broker_root_alongside_custom_bundle() -> None:
+    # ``ca_certs`` replaces the system store, but the broker root has to
+    # survive it or the handshake breaks for the caller who supplied it.
+    transport = MqttTransport(_credentials(), AsyncMock(), ca_certs=str(BROKER_ROOT_CA_PATH))
+    ctx = transport._build_tls_context()
+    assert _subject_common_names(ctx) == {_BROKER_ROOT_COMMON_NAME}
 
 
 def test_init_does_not_build_context_eagerly() -> None:
     # The whole point of the deferred-build refactor: ``__init__`` must
     # not touch ``ssl.create_default_context`` so it doesn't block the
     # caller's event loop with ``load_default_certs`` file I/O.
-    transport = MqttTransport(_credentials(), AsyncMock(), tls_insecure=True)
+    transport = MqttTransport(_credentials(), AsyncMock())
     assert transport._tls_context is None
 
 
@@ -51,7 +71,7 @@ def test_init_accepts_prebuilt_context() -> None:
 
 
 async def test_connect_builds_context_in_executor(monkeypatch) -> None:
-    transport = MqttTransport(_credentials(), AsyncMock(), tls_insecure=True)
+    transport = MqttTransport(_credentials(), AsyncMock())
     # Short-circuit aiomqtt; we only care that ``connect`` populates
     # ``_tls_context`` via the loop's executor before reaching the
     # client.

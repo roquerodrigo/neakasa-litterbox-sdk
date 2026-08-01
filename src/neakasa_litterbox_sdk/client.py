@@ -327,7 +327,6 @@ class NeakasaClient:
         self,
         *,
         ca_certs: str | None = None,
-        tls_insecure: bool = False,
         tls_context: ssl.SSLContext | None = None,
     ) -> StatusStream:
         """Open a live status stream against the user's account.
@@ -346,14 +345,13 @@ class NeakasaClient:
         keep them non-blocking and use ``asyncio.create_task`` for
         anything that needs to run alongside the dispatcher.
 
-        ``ca_certs`` lets you point at a CA bundle the broker's chain
-        validates against (the Aliyun broker still chains to the legacy
-        GlobalSign Root CA dropped by recent ``certifi`` releases).
-        ``tls_insecure=True`` skips hostname/cert validation entirely
-        for environments where that's acceptable. ``tls_context`` hands
-        in a fully-built :class:`ssl.SSLContext` and bypasses both —
-        useful for callers (e.g. Home Assistant) that already manage a
-        shared, pre-warmed context off the event loop.
+        The broker's certificate chain and hostname are always verified:
+        the SDK trusts the system store plus the bundled root the Aliyun
+        chain terminates at. ``ca_certs`` swaps the system store for a
+        bundle of your own; ``tls_context`` hands in a fully-built
+        :class:`ssl.SSLContext` and bypasses both — useful for callers
+        (e.g. Home Assistant) that already manage a shared, pre-warmed
+        context off the event loop.
 
         Requires that :meth:`login` has been called first.
         """
@@ -362,7 +360,6 @@ class NeakasaClient:
             self._aliyun,
             session,
             ca_certs=ca_certs,
-            tls_insecure=tls_insecure,
             tls_context=tls_context,
         )
 

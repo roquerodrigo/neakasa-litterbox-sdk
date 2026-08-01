@@ -30,7 +30,7 @@ def _credentials() -> MqttCredentials:
 
 
 def _transport() -> MqttTransport:
-    return MqttTransport(_credentials(), AsyncMock(), tls_insecure=True)
+    return MqttTransport(_credentials(), AsyncMock())
 
 
 def test_topic_prefix() -> None:
@@ -218,7 +218,7 @@ async def test_dispatch_loop_propagates_cancellation() -> None:
 
 async def test_dispatch_loop_routes_property_message_to_handler() -> None:
     on_message = AsyncMock()
-    transport = MqttTransport(_credentials(), on_message, tls_insecure=True)
+    transport = MqttTransport(_credentials(), on_message)
     client = MagicMock()
     client.messages = _FakeMessages([_message("/sys/pk/dn/thing/properties", b'{"x": 1}')])
     transport._client = client
@@ -233,7 +233,7 @@ async def test_dispatch_loop_routes_property_message_to_handler() -> None:
 
 async def test_dispatch_loop_routes_reply_before_handler() -> None:
     on_message = AsyncMock()
-    transport = MqttTransport(_credentials(), on_message, tls_insecure=True)
+    transport = MqttTransport(_credentials(), on_message)
     loop = asyncio.get_running_loop()
     future: asyncio.Future[object] = loop.create_future()
     transport._pending_replies["rid"] = future
@@ -251,7 +251,7 @@ async def test_dispatch_loop_routes_reply_before_handler() -> None:
 
 async def test_dispatch_loop_swallows_handler_exception() -> None:
     on_message = AsyncMock(side_effect=RuntimeError("handler blew up"))
-    transport = MqttTransport(_credentials(), on_message, tls_insecure=True)
+    transport = MqttTransport(_credentials(), on_message)
     client = MagicMock()
     client.messages = _FakeMessages([_message("/sys/pk/dn/thing/properties", b"{}")])
     transport._client = client
@@ -280,7 +280,7 @@ async def test_dispatch_loop_logs_and_exits_on_mqtt_error() -> None:
 
 async def test_dispatch_loop_converts_bytearray_payload() -> None:
     on_message = AsyncMock()
-    transport = MqttTransport(_credentials(), on_message, tls_insecure=True)
+    transport = MqttTransport(_credentials(), on_message)
     client = MagicMock()
     client.messages = _FakeMessages([_message("/sys/pk/dn/thing/properties", bytearray(b"abc"))])
     transport._client = client

@@ -148,5 +148,5 @@ def test_watch_status_returns_stream() -> None:
 
     client = NeakasaClient(email="user@example.com", password="pw")
     client._login_result = _login_result()
-    stream = client.watch_status(tls_insecure=True)
+    stream = client.watch_status()
     assert isinstance(stream, StatusStream)

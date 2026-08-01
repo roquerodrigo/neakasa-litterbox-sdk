@@ -70,13 +70,11 @@ class StatusStream:
         login: LoginResult,
         *,
         ca_certs: str | None = None,
-        tls_insecure: bool = False,
         tls_context: ssl.SSLContext | None = None,
     ) -> None:
         self._aliyun = aliyun
         self._login = login
         self._ca_certs = ca_certs
-        self._tls_insecure = tls_insecure
         self._tls_context = tls_context
         self._transport: MqttTransport | None = None
         self._stop_event = asyncio.Event()
@@ -117,7 +115,6 @@ class StatusStream:
             credentials,
             on_message=self._handle_message,
             ca_certs=self._ca_certs,
-            tls_insecure=self._tls_insecure,
             tls_context=self._tls_context,
         )
         await transport.connect()
