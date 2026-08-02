@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.0...v0.2.1) (2026-08-02)
+
+
+### Bug Fixes
+
+* wrap request timeouts in TransportError ([e2ce24b](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/e2ce24b217405006890902287d3f07d86cf249fa))
+
 ## [0.2.0](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.1.12...v0.2.0) (2026-08-01)
 
 
