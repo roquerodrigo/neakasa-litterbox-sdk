@@ -105,7 +105,10 @@ class AliyunTransport:
                         f"Failed to POST {path}: HTTP {resp.status}: {detail}",
                         status_code=resp.status,
                     )
-        except aiohttp.ClientError as exc:
+        # ``ClientTimeout`` surfaces as the builtin ``TimeoutError``, which is
+        # not an ``aiohttp.ClientError`` — without it a slow cloud escapes the
+        # SDK's exception hierarchy entirely.
+        except (aiohttp.ClientError, TimeoutError) as exc:
             raise TransportError(f"Failed to POST {path}: {exc}") from exc
         log.debug("Response body: %s", raw[:2048])
         return loads(raw)

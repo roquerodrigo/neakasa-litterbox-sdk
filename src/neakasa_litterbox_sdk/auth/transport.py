@@ -107,7 +107,10 @@ class HttpTransport:
                         f"Failed to GET {base_url}: HTTP {resp.status}",
                         status_code=resp.status,
                     )
-        except aiohttp.ClientError as exc:
+        # ``ClientTimeout`` surfaces as the builtin ``TimeoutError``, which is
+        # not an ``aiohttp.ClientError`` — without it a slow cloud escapes the
+        # SDK's exception hierarchy entirely.
+        except (aiohttp.ClientError, TimeoutError) as exc:
             raise TransportError(f"Failed to GET {base_url}: {exc}") from exc
         log.debug("Response body: %s", body[:2048])
         return loads(body)
