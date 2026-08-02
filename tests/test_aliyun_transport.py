@@ -98,6 +98,15 @@ async def test_post_client_error_is_wrapped() -> None:
         await transport.call("/x", api_version="1.0", payload={})
 
 
+async def test_post_timeout_is_wrapped() -> None:
+    # aiohttp raises the builtin TimeoutError on ``ClientTimeout``; it is not
+    # a ClientError, so it has to be caught explicitly or it escapes the SDK.
+    session = _FakeSession(raise_exc=TimeoutError)
+    transport = AliyunTransport(session=session)  # type: ignore[arg-type]
+    with pytest.raises(TransportError, match="Failed to POST"):
+        await transport.call("/x", api_version="1.0", payload={})
+
+
 async def test_close_closes_owned_session(monkeypatch: pytest.MonkeyPatch) -> None:
     transport = AliyunTransport()
     created = _FakeSession(_FakeResponse(200, b'{"code": 200}'))

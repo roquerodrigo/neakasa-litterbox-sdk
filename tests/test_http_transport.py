@@ -99,6 +99,15 @@ async def test_client_error_is_wrapped() -> None:
         await transport.signed_get("https://host/api", {})
 
 
+async def test_timeout_is_wrapped() -> None:
+    # aiohttp raises the builtin TimeoutError on ``ClientTimeout``; it is not
+    # a ClientError, so it has to be caught explicitly or it escapes the SDK.
+    session = _FakeSession(raise_exc=TimeoutError)
+    transport = HttpTransport(session=session)  # type: ignore[arg-type]
+    with pytest.raises(TransportError, match="Failed to GET"):
+        await transport.signed_get("https://host/api", {})
+
+
 async def test_close_closes_owned_session(monkeypatch: pytest.MonkeyPatch) -> None:
     """When the transport created the session, ``close`` shuts it down."""
     transport = HttpTransport()
