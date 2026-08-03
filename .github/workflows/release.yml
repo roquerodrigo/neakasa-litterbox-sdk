@@ -1,5 +1,12 @@
 name: Release
 
+# Three composable stages: release-please grooms the release pull request and
+# tags it, the lock is refreshed on the release branch so it lands carrying the
+# same version, and the tag is published to PyPI.
+#
+# The `workflow_run.event == 'push'` condition is what stops a pull request with
+# green CI from cutting a release.
+
 on:
   workflow_run:
     workflows: [CI]
@@ -8,24 +15,48 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to (re)publish to PyPI, e.g. v1.1.0. Skips release-please."
+        description: "Tag to republish to PyPI, for example v1.1.0. Skips release-please."
         required: true
         type: string
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   release:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.conclusion == 'success')
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
       pull-requests: write
-    uses: roquerodrigo/.github/.github/workflows/sdk-release.yml@v3
+    uses: roquerodrigo/workflows/.github/workflows/release-please.yml@main
+    secrets:
+      release-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+
+  sync-uv-lock:
+    needs: release
+    if: needs.release.outputs.release-pr != ''
+    permissions:
+      contents: read
+    uses: roquerodrigo/workflows/.github/workflows/sync-uv-lock.yml@main
     with:
-      pypi-package: neakasa-litterbox-sdk
-      dispatch-tag: ${{ inputs.tag || '' }}
-    secrets: inherit
+      release-pr: ${{ needs.release.outputs.release-pr }}
+    secrets:
+      release-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+
+  publish:
+    needs: release
+    if: >-
+      always() && (
+        github.event_name == 'workflow_dispatch' ||
+        needs.release.outputs.release-created == 'true'
+      )
+    permissions:
+      contents: read
+    uses: roquerodrigo/workflows/.github/workflows/publish-pypi.yml@main
+    with:
+      package: neakasa-litterbox-sdk
+      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release.outputs.tag-name }}
+    secrets:
+      pypi-token: ${{ secrets.PYPI_API_TOKEN }}
