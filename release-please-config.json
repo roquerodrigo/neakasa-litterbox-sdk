@@ -9,18 +9,58 @@
     ".": {
       "package-name": "neakasa-litterbox-sdk",
       "changelog-sections": [
-        { "type": "feat", "section": "Features" },
-        { "type": "fix", "section": "Bug Fixes" },
-        { "type": "perf", "section": "Performance Improvements" },
-        { "type": "deps", "section": "Dependencies" },
-        { "type": "revert", "section": "Reverts" },
-        { "type": "docs", "section": "Documentation" },
-        { "type": "build", "section": "Build System", "hidden": true },
-        { "type": "ci", "section": "Continuous Integration", "hidden": true },
-        { "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
-        { "type": "refactor", "section": "Code Refactoring", "hidden": true },
-        { "type": "style", "section": "Styles", "hidden": true },
-        { "type": "test", "section": "Tests", "hidden": true }
+        {
+          "type": "feat",
+          "section": "Features"
+        },
+        {
+          "type": "fix",
+          "section": "Bug Fixes"
+        },
+        {
+          "type": "perf",
+          "section": "Performance Improvements"
+        },
+        {
+          "type": "revert",
+          "section": "Reverts"
+        },
+        {
+          "type": "refactor",
+          "section": "Code Refactoring"
+        },
+        {
+          "type": "deps",
+          "section": "Dependencies"
+        },
+        {
+          "type": "deps-dev",
+          "section": "Development Dependencies"
+        },
+        {
+          "type": "docs",
+          "section": "Documentation"
+        },
+        {
+          "type": "build",
+          "section": "Build System"
+        },
+        {
+          "type": "ci",
+          "section": "Continuous Integration"
+        },
+        {
+          "type": "test",
+          "section": "Tests"
+        },
+        {
+          "type": "style",
+          "section": "Styles"
+        },
+        {
+          "type": "chore",
+          "section": "Miscellaneous Chores"
+        }
       ]
     }
   }
