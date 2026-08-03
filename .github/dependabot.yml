@@ -13,6 +13,10 @@ updates:
         patterns:
           - "*"
 
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
@@ -24,3 +28,7 @@ updates:
       python-deps:
         patterns:
           - "*"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
