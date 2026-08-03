@@ -11,8 +11,8 @@ permissions:
 
 jobs:
   lint:
-    uses: roquerodrigo/.github/.github/workflows/sdk-lint.yml@v2
+    uses: roquerodrigo/.github/.github/workflows/sdk-lint.yml@v3
 
   tests:
     needs: lint
-    uses: roquerodrigo/.github/.github/workflows/sdk-tests.yml@v2
+    uses: roquerodrigo/.github/.github/workflows/sdk-tests.yml@v3
