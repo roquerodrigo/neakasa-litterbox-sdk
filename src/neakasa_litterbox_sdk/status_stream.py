@@ -17,7 +17,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, Self, TypeAlias
 
 from .aliyun.mqtt_auth import derive_mqtt_credentials
 from .aliyun.mqtt_transport import MqttTransport
@@ -114,7 +114,7 @@ class StatusStream:
         self._on_unknown: OnUnknownEvent | None = None
         self._on_change: OnAnyEvent | None = None
 
-    async def __aenter__(self) -> StatusStream:
+    async def __aenter__(self) -> Self:
         await self.start()
         return self
 

@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .._credentials import APP_KEY, APP_SECRET
+from .._status_codes import ENVELOPE_SUCCESS_CODE
 from ..exceptions import ApiError
 from ..utils._json import get_int, get_str
 from .signing import GATEWAY_HOST_US
@@ -142,7 +143,7 @@ async def _fetch_triple(transport: AliyunTransport, *, host: str) -> JsonObject:
         payload={"authInfo": auth_info},
     )
     code = get_int(response, "code", default=-1)
-    if code != 200:
+    if code != ENVELOPE_SUCCESS_CODE:
         raise ApiError(
             f"Failed to bootstrap MQTT credentials: server returned code {code}",
             code=code,

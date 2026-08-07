@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .._credentials import APP_KEY
+from .._status_codes import ENVELOPE_SUCCESS_CODE
 from ..exceptions import ApiError, AuthenticationError, NeakasaError
 from ..utils._json import JsonObject, get_object, get_str
 
@@ -173,7 +174,7 @@ def _expect_iot_success(
     """Aliyun IoT envelope returns ``code: 200`` on success (not 0)."""
     code = _get_code(envelope)
     message = get_str(envelope, "message")
-    if code != 200:
+    if code != ENVELOPE_SUCCESS_CODE:
         cls = AuthenticationError if auth else ApiError
         raise cls(
             f"Failed to {context}: server returned code {code}",

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 
+from .._status_codes import HTTP_ERROR_STATUS
 from ..exceptions import TransportError
 from ..utils._json import loads
 from .envelope import build_envelope
@@ -98,7 +99,7 @@ class AliyunTransport:
         try:
             async with self._session.post(url, data=body, headers=headers) as resp:
                 raw = await resp.read()
-                if resp.status >= 400:
+                if resp.status >= HTTP_ERROR_STATUS:
                     detail = raw[:512].decode("utf-8", errors="replace")
                     log.debug("HTTP %s on %s: body=%s", resp.status, path, detail)
                     raise TransportError(
