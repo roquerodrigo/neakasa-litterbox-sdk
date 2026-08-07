@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, TypeAlias
 
 from .aliyun.mqtt_auth import derive_mqtt_credentials
 from .aliyun.mqtt_transport import MqttTransport
+from .exceptions import TransportError
 from .models import OperatingState, StatusUpdate
 from .utils._json import JsonValue, loads
 
@@ -78,6 +79,7 @@ class StatusStream:
         self._tls_context = tls_context
         self._transport: MqttTransport | None = None
         self._stop_event = asyncio.Event()
+        self._connection_error: Exception | None = None
         self._on_silent_mode: OnBoolEvent | None = None
         self._on_child_lock: OnBoolEvent | None = None
         self._on_auto_level: OnBoolEvent | None = None
@@ -107,7 +109,11 @@ class StatusStream:
         await self.stop()
 
     async def start(self) -> None:
-        """Open the MQTT session, subscribe, and bind to the user's account."""
+        """Open the MQTT session, subscribe, and bind to the user's account.
+
+        If subscribing or binding fails, the freshly opened connection is
+        torn down before the error propagates — nothing leaks.
+        """
         if self._transport is not None:
             return
         credentials = await derive_mqtt_credentials(self._aliyun, gateway_host=self._login.iot_host)
@@ -116,11 +122,17 @@ class StatusStream:
             on_message=self._handle_message,
             ca_certs=self._ca_certs,
             tls_context=self._tls_context,
+            on_connection_lost=self._handle_connection_lost,
         )
         await transport.connect()
-        await transport.subscribe(f"{transport.topic_prefix}/app/down/#", qos=1)
-        await transport.bind_account(self._login.iot_token)
+        try:
+            await transport.subscribe(f"{transport.topic_prefix}/app/down/#", qos=1)
+            await transport.bind_account(self._login.iot_token)
+        except BaseException:
+            await transport.disconnect()
+            raise
         self._transport = transport
+        self._connection_error = None
         self._stop_event.clear()
         log.info("Status stream live for %s", self._login.user_info.user_name)
 
@@ -134,8 +146,24 @@ class StatusStream:
         log.info("Status stream stopped")
 
     async def run_forever(self) -> None:
-        """Block the caller until :meth:`stop` is called or the task is cancelled."""
+        """Block the caller until :meth:`stop` is called or the task is cancelled.
+
+        Raises :class:`TransportError` if the MQTT connection drops while
+        waiting, so consumers can reconnect instead of blocking forever.
+        """
         await self._stop_event.wait()
+        error = self._connection_error
+        if error is None:
+            return
+        if isinstance(error, TransportError):
+            raise error
+        raise TransportError(f"Failed to keep status stream alive: {error}") from error
+
+    def _handle_connection_lost(self, exc: Exception) -> None:
+        """Record the dispatcher's death and release :meth:`run_forever` waiters."""
+        log.warning("Status stream connection lost: %s", exc)
+        self._connection_error = exc
+        self._stop_event.set()
 
     def on_silent_mode(self, fn: OnBoolEvent) -> None:
         """Fires with ``(device_name, enabled)`` whenever silent mode toggles."""
