@@ -1,12 +1,30 @@
 # Run with: pre-commit install
-# CI mirrors these checks via roquerodrigo/.github/sdk-lint.yml
+# Local hooks run through `uv run`, so they use the exact tool versions
+# pinned in uv.lock — the same ones CI resolves. Mypy runs here too since
+# the project venv already carries everything it needs.
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+  - repo: local
     hooks:
-      - id: ruff-check
-        args: [--fix]
       - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: mypy
+        name: mypy
+        entry: uv run mypy src
+        language: system
+        pass_filenames: false
+        types: [python]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

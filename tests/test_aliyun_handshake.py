@@ -11,10 +11,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from neakasa_litterbox_sdk.aliyun.handshake import (
-    exchange_for_iot_session,
-    exchange_for_iot_token,
-)
+from neakasa_litterbox_sdk.aliyun.handshake import exchange_for_iot_session
 from neakasa_litterbox_sdk.exceptions import ApiError, AuthenticationError, NeakasaError
 
 
@@ -57,17 +54,6 @@ def _transport(
     return transport
 
 
-async def test_full_handshake_returns_iot_token() -> None:
-    transport = _transport(
-        call_side=[_region_response(), _token_response()],
-        oa_side=[_vid_response(), _sid_response()],
-    )
-    token = await exchange_for_iot_token(transport, "ali-auth-token")
-    assert token == "iot-token-789"
-    assert transport.call.await_count == 2
-    assert transport.call_oa.await_count == 2
-
-
 async def test_full_handshake_returns_iot_session_with_endpoint() -> None:
     transport = _transport(
         call_side=[_region_response(), _token_response()],
@@ -76,25 +62,27 @@ async def test_full_handshake_returns_iot_session_with_endpoint() -> None:
     session = await exchange_for_iot_session(transport, "ali-auth-token")
     assert session.iot_token == "iot-token-789"
     assert session.api_gateway_endpoint == "api.example.com"
+    assert transport.call.await_count == 2
+    assert transport.call_oa.await_count == 2
 
 
 async def test_empty_auth_token_raises_before_network() -> None:
     transport = _transport(call_side=[], oa_side=[])
     with pytest.raises(NeakasaError, match="aliAuthenticationToken is empty"):
-        await exchange_for_iot_token(transport, "")
+        await exchange_for_iot_session(transport, "")
     transport.call.assert_not_awaited()
 
 
 async def test_region_non_200_raises_apierror() -> None:
     transport = _transport(call_side=[{"code": 500, "message": "boom"}])
     with pytest.raises(ApiError, match="get Aliyun region"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_region_missing_endpoints_raises() -> None:
     transport = _transport(call_side=[{"code": 200, "data": {"oaApiGatewayEndpoint": ""}}])
     with pytest.raises(ApiError, match="missing oaApiGatewayEndpoint"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_vid_top_level_failure_raises() -> None:
@@ -103,7 +91,7 @@ async def test_vid_top_level_failure_raises() -> None:
         oa_side=[{"success": "false", "errorMsg": "nope"}],
     )
     with pytest.raises(ApiError, match="get Aliyun vid"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_vid_inner_failure_raises() -> None:
@@ -112,7 +100,7 @@ async def test_vid_inner_failure_raises() -> None:
         oa_side=[{"success": "true", "data": {"successful": "false", "message": "bad"}}],
     )
     with pytest.raises(ApiError, match=r"data\.successful"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_vid_missing_value_raises() -> None:
@@ -121,7 +109,7 @@ async def test_vid_missing_value_raises() -> None:
         oa_side=[{"success": "true", "data": {"successful": "true"}}],
     )
     with pytest.raises(ApiError, match="missing 'vid'"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_sid_failure_raises_authentication_error() -> None:
@@ -133,7 +121,7 @@ async def test_sid_failure_raises_authentication_error() -> None:
         ],
     )
     with pytest.raises(AuthenticationError, match="get Aliyun sid"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_sid_missing_value_raises_authentication_error() -> None:
@@ -145,7 +133,7 @@ async def test_sid_missing_value_raises_authentication_error() -> None:
         ],
     )
     with pytest.raises(AuthenticationError, match="missing 'sid'"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_create_token_non_200_raises_authentication_error() -> None:
@@ -154,7 +142,7 @@ async def test_create_token_non_200_raises_authentication_error() -> None:
         oa_side=[_vid_response(), _sid_response()],
     )
     with pytest.raises(AuthenticationError, match="create Aliyun iotToken"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 async def test_create_token_missing_value_raises() -> None:
@@ -163,7 +151,7 @@ async def test_create_token_missing_value_raises() -> None:
         oa_side=[_vid_response(), _sid_response()],
     )
     with pytest.raises(AuthenticationError, match="missing 'iotToken'"):
-        await exchange_for_iot_token(transport, "ali-auth-token")
+        await exchange_for_iot_session(transport, "ali-auth-token")
 
 
 def test_get_code_rejects_bool_and_non_int() -> None:

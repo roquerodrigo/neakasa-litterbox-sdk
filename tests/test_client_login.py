@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
-from neakasa_litterbox_sdk import LoginResult, NeakasaClient, Region, UserInfo
+from neakasa_litterbox_sdk import LoginResult, NeakasaClient, Region, UserInfo, _credentials
+from neakasa_litterbox_sdk._credentials import USER_AGENT
 
 if TYPE_CHECKING:
     import pytest
@@ -128,3 +130,22 @@ def test_login_result_property_starts_none() -> None:
     client = _client()
     assert client.login_result is None
     assert client.is_authenticated is False
+
+
+def test_user_agent_tracks_installed_version() -> None:
+    assert f"neakasa-litterbox-sdk/{version('neakasa-litterbox-sdk')}" == USER_AGENT
+
+
+def test_login_params_carry_sdk_user_agent_as_dev_sys_ver() -> None:
+    params = _client()._build_login_params()
+    assert params["devSysVer"] == USER_AGENT
+
+
+def test_sdk_version_falls_back_when_package_metadata_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _raise(_name: str) -> str:
+        raise PackageNotFoundError
+
+    monkeypatch.setattr(_credentials, "version", _raise)
+    assert _credentials._sdk_version() == "0.0.0"

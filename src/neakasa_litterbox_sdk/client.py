@@ -6,6 +6,7 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+from ._credentials import USER_AGENT
 from .aliyun.handshake import exchange_for_iot_session
 from .aliyun.signing import GATEWAY_HOST_US
 from .aliyun.transport import AliyunTransport
@@ -47,7 +48,7 @@ _AREA_CODE = "1"
 
 
 class NeakasaClient:
-    """Synchronous client wrapping the Neakasa REST API.
+    """Asynchronous client wrapping the Neakasa REST API.
 
     The client never logs in implicitly. The caller drives the session
     lifecycle:
@@ -591,7 +592,7 @@ class NeakasaClient:
             "deviceNumber": "neakasa-litterbox-sdk",
             "deviceToken": "neakasa-litterbox-sdk",
             "deviceType": "2",
-            "devSysVer": "neakasa-litterbox-sdk/0.1.0",
+            "devSysVer": USER_AGENT,
         }
 
 

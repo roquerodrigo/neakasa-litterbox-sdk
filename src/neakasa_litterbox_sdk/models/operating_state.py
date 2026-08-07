@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from enum import IntEnum
 
-_LOGGER = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.models.operating_state")
 
 # Codes already warned about, so a persistent unmapped state doesn't spam
 # the log on every poll/push — warn once per distinct value per process.
@@ -44,7 +44,7 @@ class OperatingState(IntEnum):
         except ValueError:
             if value not in _warned_codes:
                 _warned_codes.add(value)
-                _LOGGER.warning(
+                log.warning(
                     "Unmapped Neakasa operating-state code %s (raw bucketStatus); "
                     "treating as UNKNOWN — please report it so it can be mapped",
                     value,
