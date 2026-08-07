@@ -49,7 +49,7 @@ class AliyunTransport:
         payload: dict[str, JsonValue],
         language: str = "en-US",
     ) -> JsonObject:
-        """Standard IoT-envelope POST (the ``c/d/params/request`` JSON-RPC shape)."""
+        """Send a standard IoT-envelope POST (the ``c/d/params/request`` JSON-RPC shape)."""
         request_id, body = build_envelope(
             payload,
             api_version=api_version,

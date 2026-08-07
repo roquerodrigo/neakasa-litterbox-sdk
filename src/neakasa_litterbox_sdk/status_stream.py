@@ -166,39 +166,39 @@ class StatusStream:
         self._stop_event.set()
 
     def on_silent_mode(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, enabled)`` whenever silent mode toggles."""
+        """Register a ``(device_name, enabled)`` handler for silent-mode toggles."""
         self._on_silent_mode = fn
 
     def on_child_lock(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, enabled)`` whenever the child lock toggles."""
+        """Register a ``(device_name, enabled)`` handler for child-lock toggles."""
         self._on_child_lock = fn
 
     def on_auto_level(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, enabled)`` whenever auto-level toggles."""
+        """Register a ``(device_name, enabled)`` handler for auto-level toggles."""
         self._on_auto_level = fn
 
     def on_young_cat_mode(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, enabled)`` whenever kitten mode toggles."""
+        """Register a ``(device_name, enabled)`` handler for kitten-mode toggles."""
         self._on_young_cat_mode = fn
 
     def on_cleaning_enabled(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, enabled)`` whenever scheduled cleaning toggles."""
+        """Register a ``(device_name, enabled)`` handler for scheduled-cleaning toggles."""
         self._on_cleaning_enabled = fn
 
     def on_cat_present(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, present)`` whenever a cat enters or leaves."""
+        """Register a ``(device_name, present)`` handler for cats entering or leaving."""
         self._on_cat_present = fn
 
     def on_needs_cleaning(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, needs_cleaning)`` when the device flags one."""
+        """Register a ``(device_name, needs_cleaning)`` handler for pending-clean flags."""
         self._on_needs_cleaning = fn
 
     def on_bucket_full(self, fn: OnBoolEvent) -> None:
-        """Fires with ``(device_name, full)`` when the waste bin status flips."""
+        """Register a ``(device_name, full)`` handler for waste-bin status flips."""
         self._on_bucket_full = fn
 
     def on_operating_state(self, fn: OnOperatingStateEvent) -> None:
-        """Fires with ``(device_name, state)`` when the box changes activity.
+        """Register a ``(device_name, state)`` handler for activity changes.
 
         ``state`` is an :class:`OperatingState` (idle / cleaning /
         restoring / leveling / cat_appears); unrecognised codes arrive as
@@ -207,23 +207,23 @@ class StatusStream:
         self._on_operating_state = fn
 
     def on_sand_percent(self, fn: OnIntEvent) -> None:
-        """Fires with ``(device_name, percent_0_to_100)`` on each litter-level update."""
+        """Register a ``(device_name, percent_0_to_100)`` handler for litter-level updates."""
         self._on_sand_percent = fn
 
     def on_cat_stay_seconds(self, fn: OnIntEvent) -> None:
-        """Fires with ``(device_name, seconds)`` while a cat is present."""
+        """Register a ``(device_name, seconds)`` handler fired while a cat is present."""
         self._on_cat_stay_seconds = fn
 
     def on_last_sand_added(self, fn: OnStrEvent) -> None:
-        """Fires with ``(device_name, "YYYY-MM-DD HH:MM:SS")`` on each refill."""
+        """Register a ``(device_name, "YYYY-MM-DD HH:MM:SS")`` handler for refills."""
         self._on_last_sand_added = fn
 
     def on_last_action(self, fn: OnStrEvent) -> None:
-        """Fires with ``(device_name, action)`` for each device-reported action string."""
+        """Register a ``(device_name, action)`` handler for device-reported actions."""
         self._on_last_action = fn
 
     def on_unknown(self, fn: OnUnknownEvent) -> None:
-        """Fires with ``(device_name, raw_key, raw_value)`` for any unmapped property.
+        """Register a ``(device_name, raw_key, raw_value)`` handler for unmapped properties.
 
         Useful for surfacing new server-side fields the SDK doesn't yet
         translate — see :class:`StatusUpdate` for the passthrough rules.
@@ -231,7 +231,7 @@ class StatusStream:
         self._on_unknown = fn
 
     def on_change(self, fn: OnAnyEvent) -> None:
-        """Fires with the whole :class:`StatusUpdate` for every push.
+        """Register a handler receiving the whole :class:`StatusUpdate` on every push.
 
         Runs after the per-event handlers; useful as a catchall when you
         need access to ``device_name`` plus every field in a single
