@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.2.2](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.1...v0.2.2) (2026-08-07)
+
+
+### Features
+
+* **status-stream:** reconnect a dropped push session with exponential backoff ([6121856](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/612185679f196c207600280ec2eda44b9b2f6e2c))
+
+
+### Bug Fixes
+
+* surface MQTT connection loss and stop leaking the session on failed start ([52c452a](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/52c452a750b0d6fe0896cd79896c1048e5c70d46))
+
+
+### Code Refactoring
+
+* derive the reported version from package metadata and drop dead code ([77092d2](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/77092d205faf2b0499b4eb13cc07e5de7a74be01))
+
+
+### Dependencies
+
+* **deps:** bump aiohttp from 3.13.5 to 3.14.3 ([0627655](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/06276550c4fcae3a74539480adcf42daf91d8e3b))
+* **deps:** bump cryptography from 48.0.0 to 50.0.0 ([1c98147](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/1c98147b31da3fd79e231c9e19c92ae26a1142b2))
+
+
+### Continuous Integration
+
+* run checks on pull requests targeting any branch ([5c35327](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/5c35327fdc715bfeef21b33f35fc7b75c9a441cf))
+* run code scanning on pull requests targeting any branch ([63916b5](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/63916b5782c42ebcd7977e951b4686e5b9283753))
+
+
+### Miscellaneous Chores
+
+* broaden the ruff rule set with pydocstyle, bandit, and async checks ([0f5d1b1](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/0f5d1b1dbafa5db5b7b92f87c059af0e65eae6f8))
+* keep blind-except off for the stream's background supervisor ([b0dd1a2](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/b0dd1a24394f4906cf0a5d3c806f972de173d64b))
+* lint the whole ruff rule set and name the protocol status codes ([e7d1612](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/e7d1612b96b78d100a1fe317d67ad964c3e4d663))
+* move CI to the shared workflows repository ([7f93fce](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/7f93fce98a29a4c24e4490b225292395cb02b373))
+* release on every conventional commit type ([2c05f1a](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/2c05f1a410a0eaa6e8e70231e91b3b0b48d4c514))
+
 ## [0.2.1](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.0...v0.2.1) (2026-08-02)
 
 
