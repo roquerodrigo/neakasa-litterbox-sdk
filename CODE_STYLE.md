@@ -175,8 +175,9 @@ in **English**:
 ## Packaging
 
 - Build backend: `hatchling`. Wheel and sdist contain `src/neakasa_litterbox_sdk`.
-- `requires-python = ">=3.11"`. Don't bump this without a `BREAKING CHANGE:`
-  footer.
+- `requires-python = ">=3.14"`, matching the floor Home Assistant declares —
+  the SDK exists to be consumed by an integration running on it. Don't bump
+  this without a `BREAKING CHANGE:` footer.
 - Public dependencies: keep them minimal and use `>=` lower bounds, not pins.
   Currently `aiohttp>=3.13.5`, `aiomqtt>=2.5.1`, and `cryptography>=44.0`
   (AES-CBC).
