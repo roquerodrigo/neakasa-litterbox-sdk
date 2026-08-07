@@ -43,7 +43,7 @@ Or, with [uv](https://docs.astral.sh/uv/):
 uv add neakasa-litterbox-sdk
 ```
 
-Requires Python 3.11+.
+Requires Python 3.14+.
 
 ## Quick start
 

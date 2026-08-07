@@ -3,7 +3,7 @@ name = "neakasa-litterbox-sdk"
 version = "0.2.2"
 description = "Python SDK for Neakasa M1 cat litter box"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 license = { text = "MIT" }
 authors = [{ name = "Rodrigo Roque", email = "rodrigogoncalvesroque@gmail.com" }]
 keywords = ["neakasa", "iot", "smart-home", "litter-box", "homeassistant", "aliyun"]
@@ -12,9 +12,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Home Automation",
 ]
@@ -64,7 +61,7 @@ lint = [
 default-groups = ["dev", "lint"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py314"
 line-length = 100
 src = ["src", "tests", "examples"]
 
@@ -145,7 +142,7 @@ max-args = 8
 ]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.14"
 strict = true
 files = ["src"]
 warn_unreachable = true

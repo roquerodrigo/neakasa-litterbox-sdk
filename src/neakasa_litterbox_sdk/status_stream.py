@@ -17,7 +17,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Self, TypeAlias
+from typing import TYPE_CHECKING, Self
 
 from .aliyun.mqtt_auth import derive_mqtt_credentials
 from .aliyun.mqtt_transport import MqttTransport
@@ -36,12 +36,12 @@ if TYPE_CHECKING:
 
 log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.status_stream")
 
-OnBoolEvent: TypeAlias = Callable[[str, bool], None]
-OnIntEvent: TypeAlias = Callable[[str, int], None]
-OnStrEvent: TypeAlias = Callable[[str, str], None]
-OnOperatingStateEvent: TypeAlias = Callable[[str, OperatingState], None]
-OnUnknownEvent: TypeAlias = Callable[[str, str, JsonValue], None]
-OnAnyEvent: TypeAlias = Callable[[StatusUpdate], None]
+type OnBoolEvent = Callable[[str, bool], None]
+type OnIntEvent = Callable[[str, int], None]
+type OnStrEvent = Callable[[str, str], None]
+type OnOperatingStateEvent = Callable[[str, OperatingState], None]
+type OnUnknownEvent = Callable[[str, str, JsonValue], None]
+type OnAnyEvent = Callable[[StatusUpdate], None]
 
 
 class StatusStream:

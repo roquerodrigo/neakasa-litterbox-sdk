@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, TypeAlias, cast
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-JsonPrimitive: TypeAlias = str | int | float | bool | None
-JsonValue: TypeAlias = "JsonPrimitive | Sequence[JsonValue] | Mapping[str, JsonValue]"
-JsonObject: TypeAlias = Mapping[str, JsonValue]
+type JsonPrimitive = str | int | float | bool | None
+type JsonValue = JsonPrimitive | Sequence[JsonValue] | Mapping[str, JsonValue]
+type JsonObject = Mapping[str, JsonValue]
 
 
 def loads(payload: bytes | str) -> JsonObject:

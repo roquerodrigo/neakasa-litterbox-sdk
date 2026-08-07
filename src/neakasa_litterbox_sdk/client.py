@@ -560,7 +560,7 @@ class NeakasaClient:
         """
         try:
             await self._authenticate_aliyun()
-        except (ApiError, AuthenticationError, NeakasaError):
+        except ApiError, AuthenticationError, NeakasaError:
             log.info("Aliyun handshake failed, attempting full re-login")
             await self._login_rest()
             await self._authenticate_aliyun()

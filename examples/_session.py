@@ -93,5 +93,5 @@ def _load_cache() -> LoginResult | None:
         return None
     try:
         return LoginResult.from_dict(json.loads(CACHE_PATH.read_text()))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None

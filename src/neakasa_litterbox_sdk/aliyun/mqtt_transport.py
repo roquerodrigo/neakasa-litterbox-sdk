@@ -24,7 +24,7 @@ import ssl
 import time
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 import aiomqtt
 
@@ -39,8 +39,8 @@ if TYPE_CHECKING:
 
 log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.aliyun.mqtt")
 
-OnMessage: TypeAlias = Callable[[str, bytes], Awaitable[None]]
-OnConnectionLost: TypeAlias = Callable[[Exception], None]
+type OnMessage = Callable[[str, bytes], Awaitable[None]]
+type OnConnectionLost = Callable[[Exception], None]
 
 
 class MqttTransport:
