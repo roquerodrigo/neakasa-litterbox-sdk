@@ -10,7 +10,7 @@ client:
    "device".
 
 2. **MQTT credential derivation** — combine the triple into the
-   ``(client_id, username, password)`` tuple paho-mqtt expects::
+   ``(client_id, username, password)`` tuple the MQTT broker expects::
 
        client_id = "<dn>&<pk>|securemode=2,signmethod=hmacsha1,ext=1|"
        username  = "<dn>&<pk>"
@@ -49,16 +49,15 @@ _BOOTSTRAP_API_VERSION = "1.0.0"
 # (``LoginResult.iot_host`` / ``NeakasaClient._aliyun_host``); callers thread
 # it in via ``gateway_host``. Falls back to the US gateway when none is given.
 _MQTT_HOST_TEMPLATE = "{product_key}.iot-as-mqtt.{region}.aliyuncs.com"
-# Aliyun's mobile-channel broker speaks TLS on port 1883, not the standard
-# 8883 — the SDK's ``DEFAULT_HOST`` constant pins it explicitly and the
-# ``ssl://`` prefix is applied separately based on ``SECURE_MODE``.
+# Aliyun's mobile-channel broker speaks TLS on port 1883, not the
+# standard 8883 — confirmed against the official mobile app's traffic.
 _MQTT_PORT = 1883
 _MQTT_CLIENT_ID_SUFFIX = "|securemode=2,signmethod=hmacsha1,ext=1|"
 
 
 @dataclass(frozen=True, slots=True)
 class MqttCredentials:
-    """Everything paho-mqtt needs to open an Aliyun mobile-channel session.
+    """Everything the MQTT transport needs to open an Aliyun mobile-channel session.
 
     ``product_key`` / ``device_name`` are kept on the side because the
     user-scoped subscribe topics carry them in the path

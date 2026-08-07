@@ -25,7 +25,7 @@ committing — all three must exit cleanly. `uv run pytest` follows.
   - Example: `models/` contains `login_result.py`, `region.py`, `user_info.py`,
     plus `__init__.py`.
   - Example: `exceptions/` contains `api.py`, `auth.py`, `base.py`,
-    `transport.py`, plus `__init__.py`.
+    `credentials.py`, `session.py`, `transport.py`, plus `__init__.py`.
   - Example: `crypto/` contains `aes.py`, `digest.py`, plus `__init__.py`.
 - **Public surface goes through the package `__init__.py`.** Anything not
   re-exported there is internal — prefix with `_` if intended to stay private.
@@ -131,18 +131,23 @@ The SDK ships a `py.typed` marker so downstream consumers get type info.
   grep-able.
 - Custom exceptions form a hierarchy: `NeakasaError` is the root. `ApiError`
   (non-zero `code` in the JHResult envelope), `AuthenticationError` (login /
-  token failure, subclass of `ApiError`), `TransportError` (HTTP / network
-  failure). Wrap raw `OSError`, `socket`, `urllib` errors at the transport
-  boundary so callers only catch this hierarchy.
+  token failure, subclass of `ApiError`) with the narrower
+  `SessionExpiredError` and `InvalidCredentialsError`, and `TransportError`
+  (HTTP / network failure). Wrap raw `OSError` / `aiohttp` / `aiomqtt`
+  errors at the transport boundary so callers only catch this hierarchy.
 - Pre-validate inputs before opening a socket so user-facing errors point at
   the bad input, not a downstream traceback.
 
 ## Public API surface
 
-- Anything imported in the package `__init__.py` is the public contract
-  (`NeakasaClient`, `LoginResult`, `UserInfo`, `Region`, `ApiError`,
-  `AuthenticationError`, `NeakasaError`, `TransportError`).
-  Renaming or removing those symbols is a `BREAKING CHANGE:`.
+- Anything imported in the package `__init__.py` is the public contract:
+  `NeakasaClient`, `StatusStream`, the models (`LoginResult`, `UserInfo`,
+  `Device`, `DeviceRole`, `DeviceStatus`, `StatusUpdate`, `OperatingState`,
+  `Cat`, `CatGender`, `ToiletRecord`, `RecordType`, `DailyStatistics`,
+  `Region`) and the exception hierarchy (`NeakasaError`, `ApiError`,
+  `AuthenticationError`, `SessionExpiredError`, `InvalidCredentialsError`,
+  `TransportError`). Renaming or removing those symbols is a
+  `BREAKING CHANGE:`.
 - Internal modules can change shape freely as long as the public re-exports
   keep working.
 
@@ -184,9 +189,10 @@ in **English**:
 - Tests live in `tests/`. `uv run pytest` runs the suite. Aim for high
   coverage on auth/crypto/transport layers since they're the byte-level
   surface most likely to regress silently.
-- Live tests against the Neakasa cloud (real login with credentials from
-  `.env`) are gated behind an env var and skipped in CI; pure unit tests use
-  byte-level fixtures.
+- The suite is fully offline — transports are mocked at the boundary and
+  unit tests use byte-level fixtures. Live exercising against the Neakasa
+  cloud happens through the scripts in `examples/`, which read real
+  credentials from `.env` (never committed).
 
 ## Linting and verification
 

@@ -10,16 +10,17 @@ from Python.
 from __future__ import annotations
 
 from .envelope import build_envelope
-from .handshake import exchange_for_iot_token
+from .handshake import AliyunSession, exchange_for_iot_session
 from .oa_signing import build_oa_headers
 from .signing import GATEWAY_HOST_US, build_aliyun_headers
 from .transport import AliyunTransport
 
 __all__ = [
     "GATEWAY_HOST_US",
+    "AliyunSession",
     "AliyunTransport",
     "build_aliyun_headers",
     "build_envelope",
     "build_oa_headers",
-    "exchange_for_iot_token",
+    "exchange_for_iot_session",
 ]

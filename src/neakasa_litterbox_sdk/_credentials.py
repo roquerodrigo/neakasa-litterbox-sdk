@@ -11,6 +11,16 @@ keys: don't log them, don't expose them in error messages.
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
+
+
+def _sdk_version() -> str:
+    try:
+        return version("neakasa-litterbox-sdk")
+    except PackageNotFoundError:
+        return "0.0.0"
+
+
 APP_KEY = "32715650"
 APP_SECRET = "698ee0ef531c3df2ddded87563643860"
-USER_AGENT = "neakasa-litterbox-sdk/0.1.0"
+USER_AGENT = f"neakasa-litterbox-sdk/{_sdk_version()}"

@@ -44,22 +44,6 @@ class AliyunSession:
     api_gateway_endpoint: str
 
 
-async def exchange_for_iot_token(
-    transport: AliyunTransport,
-    ali_authentication_token: str,
-    *,
-    language: str = "en-US",
-) -> str:
-    """Run the 4-step OpenAccount handshake and return only the ``iotToken``."""
-    return (
-        await exchange_for_iot_session(
-            transport,
-            ali_authentication_token,
-            language=language,
-        )
-    ).iot_token
-
-
 async def exchange_for_iot_session(
     transport: AliyunTransport,
     ali_authentication_token: str,
