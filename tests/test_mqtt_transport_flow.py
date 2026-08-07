@@ -278,6 +278,59 @@ async def test_dispatch_loop_logs_and_exits_on_mqtt_error() -> None:
     await transport._dispatch_loop()
 
 
+async def test_dispatch_loop_signals_connection_lost_on_mqtt_error() -> None:
+    class _RaisingMessages:
+        def __aiter__(self) -> _RaisingMessages:
+            return self
+
+        async def __anext__(self) -> object:
+            raise aiomqtt.MqttError("connection lost")
+
+    errors: list[Exception] = []
+    transport = MqttTransport(_credentials(), AsyncMock(), on_connection_lost=errors.append)
+    client = MagicMock()
+    client.messages = _RaisingMessages()
+    transport._client = client
+
+    await transport._dispatch_loop()
+
+    assert len(errors) == 1
+    assert isinstance(errors[0], aiomqtt.MqttError)
+
+
+async def test_dispatch_loop_signals_connection_lost_when_stream_ends() -> None:
+    errors: list[Exception] = []
+    transport = MqttTransport(_credentials(), AsyncMock(), on_connection_lost=errors.append)
+    client = MagicMock()
+    client.messages = _FakeMessages([])
+    transport._client = client
+
+    await transport._dispatch_loop()
+
+    assert len(errors) == 1
+    assert isinstance(errors[0], TransportError)
+
+
+async def test_dispatch_loop_does_not_signal_on_cancellation() -> None:
+    class _CancellingMessages:
+        def __aiter__(self) -> _CancellingMessages:
+            return self
+
+        async def __anext__(self) -> object:
+            raise asyncio.CancelledError
+
+    errors: list[Exception] = []
+    transport = MqttTransport(_credentials(), AsyncMock(), on_connection_lost=errors.append)
+    client = MagicMock()
+    client.messages = _CancellingMessages()
+    transport._client = client
+
+    with pytest.raises(asyncio.CancelledError):
+        await transport._dispatch_loop()
+
+    assert errors == []
+
+
 async def test_dispatch_loop_converts_bytearray_payload() -> None:
     on_message = AsyncMock()
     transport = MqttTransport(_credentials(), on_message)

@@ -7,14 +7,13 @@ boundary; dispatch is driven by feeding raw push payloads straight into
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
-from neakasa_litterbox_sdk import LoginResult, OperatingState, UserInfo
-from neakasa_litterbox_sdk.status_stream import StatusStream
+import aiomqtt
+import pytest
 
-if TYPE_CHECKING:
-    import pytest
+from neakasa_litterbox_sdk import LoginResult, OperatingState, TransportError, UserInfo
+from neakasa_litterbox_sdk.status_stream import StatusStream
 
 
 def _login() -> LoginResult:
@@ -92,6 +91,99 @@ async def test_run_forever_returns_after_stop() -> None:
     stream._transport = transport
     await stream.stop()  # sets the stop event
     await stream.run_forever()  # returns immediately
+
+
+def _patch_transport(monkeypatch: pytest.MonkeyPatch, transport: MagicMock) -> MagicMock:
+    monkeypatch.setattr(
+        "neakasa_litterbox_sdk.status_stream.derive_mqtt_credentials",
+        AsyncMock(return_value=MagicMock()),
+    )
+    factory = MagicMock(return_value=transport)
+    monkeypatch.setattr("neakasa_litterbox_sdk.status_stream.MqttTransport", factory)
+    return factory
+
+
+def _transport_mock() -> MagicMock:
+    transport = MagicMock()
+    transport.topic_prefix = "/sys/pk/dn"
+    transport.connect = AsyncMock()
+    transport.subscribe = AsyncMock()
+    transport.bind_account = AsyncMock()
+    transport.disconnect = AsyncMock()
+    return transport
+
+
+async def test_start_disconnects_when_subscribe_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    stream = _stream()
+    transport = _transport_mock()
+    transport.subscribe = AsyncMock(side_effect=TransportError("Failed to subscribe: boom"))
+    _patch_transport(monkeypatch, transport)
+
+    with pytest.raises(TransportError, match="subscribe"):
+        await stream.start()
+
+    transport.disconnect.assert_awaited_once()
+    assert stream._transport is None
+
+
+async def test_start_disconnects_when_bind_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    stream = _stream()
+    transport = _transport_mock()
+    transport.bind_account = AsyncMock(side_effect=TransportError("Failed to bind account: boom"))
+    _patch_transport(monkeypatch, transport)
+
+    with pytest.raises(TransportError, match="bind account"):
+        await stream.start()
+
+    transport.disconnect.assert_awaited_once()
+    assert stream._transport is None
+
+
+async def test_run_forever_raises_when_connection_lost(monkeypatch: pytest.MonkeyPatch) -> None:
+    stream = _stream()
+    transport = _transport_mock()
+    factory = _patch_transport(monkeypatch, transport)
+
+    await stream.start()
+
+    on_connection_lost = factory.call_args.kwargs["on_connection_lost"]
+    on_connection_lost(aiomqtt.MqttError("connection lost"))
+
+    with pytest.raises(TransportError, match="Failed to keep status stream alive"):
+        await stream.run_forever()
+
+
+async def test_run_forever_reraises_transport_error_unwrapped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = _stream()
+    transport = _transport_mock()
+    factory = _patch_transport(monkeypatch, transport)
+
+    await stream.start()
+
+    original = TransportError("Failed to keep MQTT session: message stream ended")
+    factory.call_args.kwargs["on_connection_lost"](original)
+
+    with pytest.raises(TransportError) as excinfo:
+        await stream.run_forever()
+    assert excinfo.value is original
+
+
+async def test_restart_after_connection_loss_clears_the_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = _stream()
+    transport = _transport_mock()
+    factory = _patch_transport(monkeypatch, transport)
+
+    await stream.start()
+    factory.call_args.kwargs["on_connection_lost"](aiomqtt.MqttError("connection lost"))
+    await stream.stop()
+
+    await stream.start()
+    await stream.stop()
+    await stream.run_forever()  # returns cleanly: no stale error survives the restart
 
 
 async def test_context_manager_starts_and_stops(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.aliyun.mqtt")
 
 OnMessage: TypeAlias = Callable[[str, bytes], Awaitable[None]]
+OnConnectionLost: TypeAlias = Callable[[Exception], None]
 
 
 class MqttTransport:
@@ -52,9 +53,11 @@ class MqttTransport:
         keepalive: int = 60,
         ca_certs: str | None = None,
         tls_context: ssl.SSLContext | None = None,
+        on_connection_lost: OnConnectionLost | None = None,
     ) -> None:
         self._credentials = credentials
         self._on_message = on_message
+        self._on_connection_lost = on_connection_lost
         self._keepalive = keepalive
         # ``ca_certs`` replaces the system trust store; the bundled
         # broker root is added on top either way. ``tls_context``
@@ -186,6 +189,17 @@ class MqttTransport:
             raise
         except aiomqtt.MqttError as exc:
             log.warning("MQTT dispatcher exited: %s", exc)
+            self._signal_connection_lost(exc)
+        else:
+            log.warning("MQTT dispatcher exited: message stream ended")
+            self._signal_connection_lost(
+                TransportError("Failed to keep MQTT session: message stream ended"),
+            )
+
+    def _signal_connection_lost(self, exc: Exception) -> None:
+        """Tell the owner the session died so consumers stop waiting silently."""
+        if self._on_connection_lost is not None:
+            self._on_connection_lost(exc)
 
     def _try_dispatch_reply(self, payload: bytes) -> bool:
         """Return ``True`` if ``payload`` resolved a pending request-id wait."""
