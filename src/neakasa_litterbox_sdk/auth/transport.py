@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 
+from .._status_codes import HTTP_ERROR_STATUS
 from ..exceptions import TransportError
 from ..utils._json import loads
 from .signing import build_authenticated_headers, build_signed_headers
@@ -102,7 +103,7 @@ class HttpTransport:
         try:
             async with self._session.get(full_url, headers=dict(headers)) as resp:
                 body = await resp.read()
-                if resp.status >= 400:
+                if resp.status >= HTTP_ERROR_STATUS:
                     raise TransportError(
                         f"Failed to GET {base_url}: HTTP {resp.status}",
                         status_code=resp.status,

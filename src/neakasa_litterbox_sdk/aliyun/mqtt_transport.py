@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, TypeAlias
 
 import aiomqtt
 
+from .._status_codes import ENVELOPE_SUCCESS_CODE
 from ..exceptions import ApiError, TransportError
 from ..utils._json import get_int, get_str, loads
 from .broker_ca import BROKER_ROOT_CA_PATH
@@ -163,7 +164,7 @@ class MqttTransport:
         finally:
             self._pending_replies.pop(request_id, None)
         code = get_int(reply, "code", default=-1)
-        if code != 200:
+        if code != ENVELOPE_SUCCESS_CODE:
             raise ApiError(
                 f"Failed to bind account: server returned code {code}",
                 code=code,

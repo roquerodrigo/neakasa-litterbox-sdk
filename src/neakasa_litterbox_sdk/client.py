@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from ._credentials import USER_AGENT
+from ._status_codes import ENVELOPE_SUCCESS_CODE
 from .aliyun.handshake import exchange_for_iot_session
 from .aliyun.signing import GATEWAY_HOST_US
 from .aliyun.transport import AliyunTransport
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
 log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.client")
 
 _PRODUCT_ID = "a123nCqsrQm3vEbt"
+_MAX_SAND_PERCENT = 100
 _AREA_CODE = "1"
 
 
@@ -97,7 +99,7 @@ class NeakasaClient:
         """The active login result, or ``None`` before ``login()``."""
         return self._login_result
 
-    async def __aenter__(self) -> NeakasaClient:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
@@ -486,9 +488,10 @@ class NeakasaClient:
         ``max=100``); out-of-range values get a clear client-side error
         instead of a generic ``6306`` from the gateway.
         """
-        if not 1 <= percent <= 100:
+        if not 1 <= percent <= _MAX_SAND_PERCENT:
             raise NeakasaError(
-                f"Failed to calibrate sand: percent must be in 1..100, got {percent}",
+                f"Failed to calibrate sand: percent must be in 1..{_MAX_SAND_PERCENT}, "
+                f"got {percent}",
             )
         await self._invoke_service(
             device_name,
@@ -638,7 +641,7 @@ def _unwrap_aliyun(envelope: JsonObject, *, context: str) -> JsonValue:
     """Unwrap an Aliyun IoT API Gateway envelope (success is ``code == 200``)."""
     code = get_int(envelope, "code", default=-1)
     message = get_str(envelope, "message")
-    if code != 200:
+    if code != ENVELOPE_SUCCESS_CODE:
         error_cls: type[ApiError] = (
             SessionExpiredError if code in _ALIYUN_SESSION_EXPIRED_CODES else ApiError
         )

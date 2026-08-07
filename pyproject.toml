@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Home Automation",
 ]
 dependencies = [
@@ -71,29 +72,73 @@ src = ["src", "tests", "examples"]
 exclude = ["*.md"]  # ruff 0.16 formats Python blocks in Markdown; docs keep their own layout
 
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "I",
-    "B",
-    "UP",
-    "SIM",
-    "RUF",
-    "TC",
-    "D",
-    "S",
-    "ASYNC",
+select = ["ALL"]
+ignore = [
+    # Conflict with the formatter.
+    "COM812",  # missing-trailing-comma
+    "ISC001",  # single-line-implicit-string-concatenation
+    "D203",    # incorrect-blank-line-before-class
+    "D212",    # multi-line-summary-first-line
+    # Deliberate project conventions (see CODE_STYLE.md).
+    "CPY001",  # this project ships no per-file copyright headers
+    "ANN401",  # typing.Any is already banned outright by mypy
+    "TID252",  # same-package relative imports are the documented default
+    "D105",    # magic methods are covered by the class docstring
+    "D107",    # __init__ is covered by the class docstring
+    # Error messages are built at the raise site in the documented
+    # "Failed to <verb> <object>: <cause>" shape, which needs the runtime
+    # values; hoisting them into per-message exception classes or local
+    # variables would obscure the one convention every error follows.
+    "EM101",   # raw-string-in-exception
+    "EM102",   # f-string-in-exception
+    "TRY003",  # raise-vanilla-args
+    # The command surface is a public API whose booleans are documented as
+    # positional (``set_child_lock(device_name, True)``); forcing them
+    # keyword-only would break every caller.
+    "FBT001",  # boolean-type-hint-positional-argument
+    "FBT002",  # boolean-default-value-positional-argument
+    "FBT003",  # boolean-positional-value-in-call
 ]
-# D105/D107: magic methods and __init__ are covered by the class docstring.
-ignore = ["D105", "D107"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
 
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+
+[tool.ruff.lint.pylint]
+# The signing helpers take the full request tuple (method, path, body,
+# headers, timestamp, credentials); splitting it into a parameter object
+# would only move the same values one level down.
+max-args = 8
+
 [tool.ruff.lint.per-file-ignores]
-# S101: pytest asserts; S105-S107: synthetic fixture credentials.
-"tests/*" = ["D", "S101", "S105", "S106", "S107"]
-"examples/*" = ["D"]
+# Both functions are flat dispatch tables over the wire's property names:
+# the branch count *is* the mapping, and splitting it hides it.
+"src/neakasa_litterbox_sdk/models/status_update.py" = ["C901", "PLR0912"]
+"src/neakasa_litterbox_sdk/status_stream.py" = ["C901", "PLR0911", "PLR0912"]
+# The JSON boundary answers malformed input and a non-object top level with
+# the same ValueError, so callers need to catch only one type.
+"src/neakasa_litterbox_sdk/utils/_json.py" = ["TRY004"]
+"tests/*" = [
+    "S101",     # assert is the point of a test
+    "S105",     # synthetic credentials in fixtures
+    "S106",
+    "S107",
+    "D",        # tests document themselves through their names
+    "ANN",      # fixtures and lambdas carry no annotations
+    "ARG",      # doubles must match the real signature they stand in for
+    "SLF001",   # asserting on private state is intentional here
+    "PLC0415",  # local imports keep heavy fixtures out of collection
+    "PLR2004",  # literals in assertions are the expected values
+    "PYI034",   # test doubles are not part of the typed public surface
+]
+"examples/*" = [
+    "D",        # scripts explain themselves in their module docstring
+    "T201",     # print is the output of a runnable example
+    "INP001",   # examples/ is a script folder, not a package
+    "PLR2004",  # literals inline keep an example readable
+]
 
 [tool.mypy]
 python_version = "3.11"

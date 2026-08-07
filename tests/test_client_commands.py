@@ -95,7 +95,7 @@ async def test_stop_level_sends_zero_flag(monkeypatch: pytest.MonkeyPatch) -> No
     assert call_mock.await_args.kwargs["payload"]["args"] == {"bStartLeveling": 0}
 
 
-@pytest.mark.parametrize("enabled,expected", [(True, 1), (False, 0)])
+@pytest.mark.parametrize(("enabled", "expected"), [(True, 1), (False, 0)])
 async def test_set_auto_level(
     monkeypatch: pytest.MonkeyPatch, enabled: bool, expected: int
 ) -> None:
@@ -106,7 +106,7 @@ async def test_set_auto_level(
     assert payload["items"] == {"autoLevel": expected}
 
 
-@pytest.mark.parametrize("enabled,expected", [(True, 1), (False, 0)])
+@pytest.mark.parametrize(("enabled", "expected"), [(True, 1), (False, 0)])
 async def test_set_silent_mode(
     monkeypatch: pytest.MonkeyPatch, enabled: bool, expected: int
 ) -> None:
@@ -115,7 +115,7 @@ async def test_set_silent_mode(
     assert call_mock.await_args.kwargs["payload"]["items"] == {"silentMode": expected}
 
 
-@pytest.mark.parametrize("enabled,expected", [(True, 1), (False, 0)])
+@pytest.mark.parametrize(("enabled", "expected"), [(True, 1), (False, 0)])
 async def test_set_child_lock(
     monkeypatch: pytest.MonkeyPatch, enabled: bool, expected: int
 ) -> None:

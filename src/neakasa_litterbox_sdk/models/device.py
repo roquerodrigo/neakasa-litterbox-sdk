@@ -57,8 +57,4 @@ class Device:
         items: JsonValue = response.get("data")
         if not isinstance(items, Sequence) or isinstance(items, str):
             return []
-        out: list[Device] = []
-        for entry in items:
-            if isinstance(entry, Mapping):
-                out.append(Device.from_json(entry))
-        return out
+        return [Device.from_json(entry) for entry in items if isinstance(entry, Mapping)]
