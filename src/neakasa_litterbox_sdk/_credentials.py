@@ -22,5 +22,5 @@ def _sdk_version() -> str:
 
 
 APP_KEY = "32715650"
-APP_SECRET = "698ee0ef531c3df2ddded87563643860"
+APP_SECRET = "698ee0ef531c3df2ddded87563643860"  # noqa: S105 - vendor app credential, not a user secret
 USER_AGENT = f"neakasa-litterbox-sdk/{_sdk_version()}"

@@ -1,4 +1,4 @@
-"""Aliyun OpenAccount gateway signing (HmacSHA256 over form-encoded body).
+r"""Aliyun OpenAccount gateway signing (HmacSHA256 over form-encoded body).
 
 The OpenAccount endpoints (``/api/prd/connect.json``,
 ``loginbyoauth.json``) do not use the IoT envelope. They take a

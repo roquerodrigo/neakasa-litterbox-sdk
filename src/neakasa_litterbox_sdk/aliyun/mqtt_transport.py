@@ -127,7 +127,12 @@ class MqttTransport:
         """Publish ``payload`` to ``topic`` (fire-and-forget at QoS 0)."""
         await self._require_client().publish(topic, payload=payload, qos=qos)
 
-    async def bind_account(self, iot_token: str, *, timeout: float = 10.0) -> None:
+    async def bind_account(
+        self,
+        iot_token: str,
+        *,
+        timeout: float = 10.0,  # noqa: ASYNC109 - public API surface; enforced via asyncio.wait_for
+    ) -> None:
         """Associate this MQTT session with the user identified by ``iot_token``.
 
         Publishes ``/app/up/account/bind`` and waits for the matching

@@ -1,4 +1,4 @@
-"""Aliyun Cloud API Gateway request signing (HMAC-SHA1).
+r"""Aliyun Cloud API Gateway request signing (HMAC-SHA1).
 
 Every request to ``api-iot.aliyuncs.com`` carries the following
 headers::
@@ -70,7 +70,9 @@ def build_aliyun_headers(
     timestamp_ms = str(now_ms if now_ms is not None else int(time.time() * 1000))
     nonce_value = nonce if nonce is not None else str(uuid.uuid4())
     date_value = date if date is not None else formatdate(usegmt=True)
-    content_md5 = base64.b64encode(hashlib.md5(body).digest()).decode("ascii")
+    content_md5 = base64.b64encode(hashlib.md5(body, usedforsecurity=False).digest()).decode(
+        "ascii"
+    )
 
     string_to_sign = "\n".join(
         [

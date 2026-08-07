@@ -27,7 +27,7 @@ def hmac_sha256_sign(app_key: str, app_secret: str, timestamp: str) -> str:
 def md5_hex(value: str | bytes) -> str:
     """Hex MD5 of ``value`` (lowercase)."""
     data = value.encode("utf-8") if isinstance(value, str) else value
-    return hashlib.md5(data).hexdigest()
+    return hashlib.md5(data, usedforsecurity=False).hexdigest()
 
 
 def md5_double_hex(plaintext: str) -> str:

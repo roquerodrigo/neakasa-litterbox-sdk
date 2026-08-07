@@ -33,7 +33,9 @@ def test_headers_match_signature_fixture() -> None:
     assert headers["x-ca-nonce"] == "2b1d5870-52c2-4b91-9b2a-9c2c2f0da0b8"
     assert headers["x-ca-timestamp"] == "1779157013115"
 
-    expected_md5 = base64.b64encode(hashlib.md5(body).digest()).decode("ascii")
+    expected_md5 = base64.b64encode(hashlib.md5(body, usedforsecurity=False).digest()).decode(
+        "ascii"
+    )
     assert headers["content-md5"] == expected_md5
 
     expected_string_to_sign = "\n".join(

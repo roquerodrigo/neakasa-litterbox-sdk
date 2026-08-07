@@ -1,4 +1,4 @@
-"""AES-CBC helpers used by the Neakasa REST auth flow.
+r"""AES-CBC helpers used by the Neakasa REST auth flow.
 
 Two cipher modes coexist:
 
@@ -49,7 +49,7 @@ def aes_encrypt(plaintext: str, key: bytes, iv: bytes) -> str:
 
 
 def aes_encrypt_with_boot_key(plaintext: str) -> str:
-    """Convenience wrapper using the hardcoded boot key/IV.
+    """Encrypt ``plaintext`` with the hardcoded boot key/IV.
 
     Used to encrypt the ``userId`` field that goes inside the
     ``?data=<JSON>`` payload of post-login GETs and the ``uid`` header

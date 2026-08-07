@@ -80,11 +80,19 @@ select = [
     "SIM",
     "RUF",
     "TC",
+    "D",
+    "S",
+    "ASYNC",
 ]
-ignore = []
+# D105/D107: magic methods and __init__ are covered by the class docstring.
+ignore = ["D105", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D"]
+# S101: pytest asserts; S105-S107: synthetic fixture credentials.
+"tests/*" = ["D", "S101", "S105", "S106", "S107"]
 "examples/*" = ["D"]
 
 [tool.mypy]
