@@ -22,6 +22,7 @@ Async Python SDK for the **Neakasa M1** self-cleaning cat litter box.
 | Live device status (sand level, cat presence, mode flags) | ✅ |
 | Device commands (clean, level, calibrate, toggles) | ✅ |
 | Real-time MQTT push (`watch_status`) | ✅ |
+| Automatic reconnect with backoff after a dropped push session | ✅ |
 | Async-native API (`aiohttp` + `aiomqtt`) | ✅ |
 | Public API stability | ❌ breaking changes still happen across `0.x` releases |
 | Multi-device user accounts | ⚠️ untested — designed for it, but only validated against single-device setups |
@@ -104,7 +105,7 @@ All I/O methods are coroutines (prefix every call with `await`).
 | `set_auto_level` | `async (device_name: str, enabled: bool) -> None` | Toggle automatic litter-leveling after each clean cycle. |
 | `set_silent_mode` | `async (device_name: str, enabled: bool) -> None` | Suppress motor / status sounds while on. |
 | `set_child_lock` | `async (device_name: str, enabled: bool) -> None` | Ignore manual button presses while on. |
-| `watch_status` | `(*, ca_certs=None, tls_context=None) -> StatusStream` | Build a live MQTT push stream — use as an `async with` context manager and register per-event handlers on the returned stream. See [Broker TLS](#broker-tls). |
+| `watch_status` | `(*, ca_certs=None, tls_context=None, reconnect=DEFAULT_RECONNECT_POLICY) -> StatusStream` | Build a live MQTT push stream — use as an `async with` context manager and register per-event handlers on the returned stream. See [Reconnecting](#reconnecting) and [Broker TLS](#broker-tls). |
 | `close` | `async () -> None` | Close the underlying HTTP sessions. Idempotent; `async with client` also does this on exit. |
 
 | Property | Type | |
@@ -181,7 +182,22 @@ per event type; each is fire-and-forget (no return):
 Handlers run on the same asyncio loop as the rest of the SDK; keep
 them non-blocking and offload heavy work via ``asyncio.create_task``.
 Use the stream as ``async with client.watch_status() as stream:`` and
-``await stream.run_forever()`` to block until cancellation.
+``await stream.run_forever()`` to block until the stream stops — see
+[Reconnecting](#reconnecting) for what happens when the broker drops
+the session.
+
+**`ReconnectPolicy`** — the retry schedule `watch_status()` follows.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `max_attempts` | `int` | `5` | Attempts before the stream gives up. |
+| `initial_delay` | `float` | `1.0` | Seconds before the first attempt. |
+| `max_delay` | `float` | `60.0` | Ceiling for the growing delay. |
+| `multiplier` | `float` | `2.0` | Growth factor applied per attempt. |
+
+Method: `delay_for(attempt: int) -> float` — the wait before a 1-based
+attempt. `DEFAULT_RECONNECT_POLICY` is an instance carrying the
+defaults above.
 
 **`DeviceStatus`** — return value of `get_status()`.
 
@@ -310,6 +326,37 @@ async def call_and_persist(client, cache):
 `InvalidCredentialsError` and bare `AuthenticationError` propagate
 without retry — they signal a hard failure (wrong password, account
 locked, …) that re-login cannot fix.
+
+## Reconnecting
+
+When the broker drops the MQTT session, the stream rebuilds it in the
+background: it waits `initial_delay` seconds, opens a fresh connection,
+re-subscribes and re-binds the account, and multiplies the delay by
+`multiplier` (capped at `max_delay`) before each further attempt. A
+successful attempt is transparent — `run_forever()` never returns and
+the registered handlers keep firing on the new session.
+
+Only when `max_attempts` attempts have failed does the stream give up.
+It then releases `run_forever()` with a `TransportError` naming the
+attempt count and the last failure, which is the same signal a caller
+already had to handle before.
+
+```python
+from neakasa_litterbox_sdk import ReconnectPolicy
+
+async with client.watch_status(
+    reconnect=ReconnectPolicy(max_attempts=10, initial_delay=2.0, max_delay=300.0),
+) as stream:
+    stream.on_sand_percent(handler_sand)
+    await stream.run_forever()
+```
+
+Pass `reconnect=None` to switch the retries off entirely: the first
+drop then reaches `run_forever()` immediately, exactly as it did
+before this policy existed. That is the right setting for callers that
+already supervise the stream themselves (a Home Assistant coordinator,
+a process manager, ...), so two retry loops don't fight over the same
+session.
 
 ## Broker TLS
 

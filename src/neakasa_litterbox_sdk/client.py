@@ -32,6 +32,7 @@ from .models import (
     Region,
     ToiletRecord,
 )
+from .reconnect_policy import DEFAULT_RECONNECT_POLICY
 from .status_stream import StatusStream
 from .utils._json import get_int, get_str
 
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     import ssl
     from types import TracebackType
 
+    from .reconnect_policy import ReconnectPolicy
     from .utils._json import JsonObject, JsonValue
 
 log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.client")
@@ -329,6 +331,7 @@ class NeakasaClient:
         *,
         ca_certs: str | None = None,
         tls_context: ssl.SSLContext | None = None,
+        reconnect: ReconnectPolicy | None = DEFAULT_RECONNECT_POLICY,
     ) -> StatusStream:
         """Open a live status stream against the user's account.
 
@@ -354,6 +357,13 @@ class NeakasaClient:
         (e.g. Home Assistant) that already manage a shared, pre-warmed
         context off the event loop.
 
+        ``reconnect`` controls what the stream does when the broker
+        drops it. The default :data:`DEFAULT_RECONNECT_POLICY` retries
+        in the background with an exponential backoff and only lets
+        ``run_forever()`` raise once the attempts run out; passing
+        ``reconnect=None`` reports the first drop straight away, which
+        is what a caller running its own supervisor wants.
+
         Requires that :meth:`login` has been called first.
         """
         session = self._require_session()
@@ -362,6 +372,7 @@ class NeakasaClient:
             session,
             ca_certs=ca_certs,
             tls_context=tls_context,
+            reconnect=reconnect,
         )
 
     async def _get_properties(self, device_name: str) -> JsonObject:

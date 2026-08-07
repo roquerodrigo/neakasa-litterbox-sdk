@@ -26,9 +26,11 @@ from .models import (
     ToiletRecord,
     UserInfo,
 )
+from .reconnect_policy import DEFAULT_RECONNECT_POLICY, ReconnectPolicy
 from .status_stream import StatusStream
 
 __all__ = [
+    "DEFAULT_RECONNECT_POLICY",
     "ApiError",
     "AuthenticationError",
     "Cat",
@@ -42,6 +44,7 @@ __all__ = [
     "NeakasaClient",
     "NeakasaError",
     "OperatingState",
+    "ReconnectPolicy",
     "RecordType",
     "Region",
     "SessionExpiredError",

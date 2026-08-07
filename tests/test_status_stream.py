@@ -12,7 +12,14 @@ from unittest.mock import AsyncMock, MagicMock
 import aiomqtt
 import pytest
 
-from neakasa_litterbox_sdk import LoginResult, OperatingState, TransportError, UserInfo
+from neakasa_litterbox_sdk import (
+    DEFAULT_RECONNECT_POLICY,
+    LoginResult,
+    OperatingState,
+    ReconnectPolicy,
+    TransportError,
+    UserInfo,
+)
 from neakasa_litterbox_sdk.status_stream import StatusStream
 
 
@@ -33,8 +40,8 @@ def _login() -> LoginResult:
     )
 
 
-def _stream() -> StatusStream:
-    return StatusStream(MagicMock(), _login())
+def _stream(*, reconnect: ReconnectPolicy | None = DEFAULT_RECONNECT_POLICY) -> StatusStream:
+    return StatusStream(MagicMock(), _login(), reconnect=reconnect)
 
 
 def _push(items: dict[str, object], *, device: str = "PB01") -> bytes:
@@ -140,7 +147,7 @@ async def test_start_disconnects_when_bind_fails(monkeypatch: pytest.MonkeyPatch
 
 
 async def test_run_forever_raises_when_connection_lost(monkeypatch: pytest.MonkeyPatch) -> None:
-    stream = _stream()
+    stream = _stream(reconnect=None)
     transport = _transport_mock()
     factory = _patch_transport(monkeypatch, transport)
 
@@ -149,6 +156,7 @@ async def test_run_forever_raises_when_connection_lost(monkeypatch: pytest.Monke
     on_connection_lost = factory.call_args.kwargs["on_connection_lost"]
     on_connection_lost(aiomqtt.MqttError("connection lost"))
 
+    assert stream._reconnect_task is None
     with pytest.raises(TransportError, match="Failed to keep status stream alive"):
         await stream.run_forever()
 
@@ -156,7 +164,7 @@ async def test_run_forever_raises_when_connection_lost(monkeypatch: pytest.Monke
 async def test_run_forever_reraises_transport_error_unwrapped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    stream = _stream()
+    stream = _stream(reconnect=None)
     transport = _transport_mock()
     factory = _patch_transport(monkeypatch, transport)
 
@@ -173,7 +181,7 @@ async def test_run_forever_reraises_transport_error_unwrapped(
 async def test_restart_after_connection_loss_clears_the_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    stream = _stream()
+    stream = _stream(reconnect=None)
     transport = _transport_mock()
     factory = _patch_transport(monkeypatch, transport)
 
@@ -353,3 +361,134 @@ def test_fire_typed_without_handlers_is_noop() -> None:
             "Reboot": {"value": 1},
         },
     )
+
+
+def _fast_policy(max_attempts: int = 3) -> ReconnectPolicy:
+    return ReconnectPolicy(max_attempts=max_attempts, initial_delay=0.0, max_delay=0.0)
+
+
+async def _drain(stream: StatusStream) -> None:
+    """Await the background reconnect the stream just scheduled."""
+    task = stream._reconnect_task
+    assert task is not None
+    await task
+
+
+async def test_reconnects_after_connection_loss(monkeypatch: pytest.MonkeyPatch) -> None:
+    stream = StatusStream(MagicMock(), _login(), reconnect=_fast_policy())
+    first, second = _transport_mock(), _transport_mock()
+    factory = _patch_transport(monkeypatch, first)
+    factory.side_effect = [first, second]
+
+    await stream.start()
+    factory.call_args.kwargs["on_connection_lost"](aiomqtt.MqttError("connection lost"))
+    await _drain(stream)
+
+    first.disconnect.assert_awaited_once()
+    assert stream._transport is second
+    assert second.bind_account.await_count == 1
+    assert not stream._stop_event.is_set()
+
+
+async def test_reconnect_retries_until_the_broker_comes_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = StatusStream(MagicMock(), _login(), reconnect=_fast_policy())
+    first, second = _transport_mock(), _transport_mock()
+    first.connect = AsyncMock()
+    failing = _transport_mock()
+    failing.connect = AsyncMock(side_effect=TransportError("Failed to connect: broker down"))
+    factory = _patch_transport(monkeypatch, first)
+    factory.side_effect = [first, failing, second]
+
+    await stream.start()
+    factory.call_args_list[0].kwargs["on_connection_lost"](aiomqtt.MqttError("connection lost"))
+    await _drain(stream)
+
+    assert factory.call_count == 3
+    assert stream._transport is second
+    assert not stream._stop_event.is_set()
+
+
+async def test_reconnect_gives_up_and_notifies_the_consumer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = StatusStream(MagicMock(), _login(), reconnect=_fast_policy(max_attempts=2))
+    live = _transport_mock()
+    dead = _transport_mock()
+    dead.connect = AsyncMock(side_effect=TransportError("Failed to connect: broker down"))
+    factory = _patch_transport(monkeypatch, live)
+    factory.side_effect = [live, dead, dead]
+
+    await stream.start()
+    factory.call_args_list[0].kwargs["on_connection_lost"](aiomqtt.MqttError("connection lost"))
+    await _drain(stream)
+
+    assert factory.call_count == 3  # the initial start plus both attempts
+    assert stream._transport is None
+    with pytest.raises(TransportError, match="Failed to reconnect the status stream after 2"):
+        await stream.run_forever()
+
+
+async def test_second_drop_does_not_stack_reconnect_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = StatusStream(MagicMock(), _login(), reconnect=_fast_policy())
+    transport = _transport_mock()
+    factory = _patch_transport(monkeypatch, transport)
+
+    await stream.start()
+    on_connection_lost = factory.call_args.kwargs["on_connection_lost"]
+    on_connection_lost(aiomqtt.MqttError("connection lost"))
+    running = stream._reconnect_task
+    on_connection_lost(aiomqtt.MqttError("connection lost again"))
+
+    assert stream._reconnect_task is running
+    await _drain(stream)
+
+
+async def test_stop_cancels_a_pending_reconnect(monkeypatch: pytest.MonkeyPatch) -> None:
+    stream = StatusStream(
+        MagicMock(),
+        _login(),
+        reconnect=ReconnectPolicy(max_attempts=3, initial_delay=30.0, max_delay=30.0),
+    )
+    transport = _transport_mock()
+    factory = _patch_transport(monkeypatch, transport)
+
+    await stream.start()
+    factory.call_args.kwargs["on_connection_lost"](aiomqtt.MqttError("connection lost"))
+    task = stream._reconnect_task
+    assert task is not None
+
+    await stream.stop()
+
+    assert task.cancelled()
+    assert stream._reconnect_task is None
+    await stream.run_forever()  # a deliberate stop is not a failure
+
+
+async def test_drop_while_stopping_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    stream = StatusStream(MagicMock(), _login(), reconnect=_fast_policy())
+    transport = _transport_mock()
+    factory = _patch_transport(monkeypatch, transport)
+
+    await stream.start()
+    await stream.stop()
+    factory.call_args.kwargs["on_connection_lost"](aiomqtt.MqttError("connection lost"))
+
+    assert stream._reconnect_task is None
+
+
+def test_reconnect_policy_rejects_impossible_schedules() -> None:
+    with pytest.raises(ValueError, match="max_attempts"):
+        ReconnectPolicy(max_attempts=0)
+    with pytest.raises(ValueError, match="delays"):
+        ReconnectPolicy(initial_delay=-1.0)
+    with pytest.raises(ValueError, match="multiplier"):
+        ReconnectPolicy(multiplier=0.5)
+
+
+def test_reconnect_policy_backs_off_up_to_the_ceiling() -> None:
+    policy = ReconnectPolicy(initial_delay=1.0, multiplier=2.0, max_delay=5.0)
+    assert [policy.delay_for(attempt) for attempt in range(1, 5)] == [1.0, 2.0, 4.0, 5.0]
