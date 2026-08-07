@@ -98,6 +98,10 @@ ignore = [
     "FBT001",  # boolean-type-hint-positional-argument
     "FBT002",  # boolean-default-value-positional-argument
     "FBT003",  # boolean-positional-value-in-call
+    # A background supervisory task has to survive every failure mode it can
+    # be handed: an exception escaping one kills the task and leaves the
+    # consumer waiting on a stream nobody is watching any more.
+    "BLE001",  # blind-except
 ]
 
 [tool.ruff.lint.pydocstyle]
