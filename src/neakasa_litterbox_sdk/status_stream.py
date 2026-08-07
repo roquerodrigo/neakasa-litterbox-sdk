@@ -5,11 +5,16 @@ and binds the user; exit tears it down. Consumers register typed
 callbacks for the events they care about — one per property — plus an
 optional fallback for raw passthrough and a "fired on every update"
 catchall.
+
+A dropped connection is re-established in the background following the
+stream's :class:`ReconnectPolicy`; only once that schedule is exhausted
+does the failure reach the consumer.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, TypeAlias
@@ -18,6 +23,7 @@ from .aliyun.mqtt_auth import derive_mqtt_credentials
 from .aliyun.mqtt_transport import MqttTransport
 from .exceptions import TransportError
 from .models import OperatingState, StatusUpdate
+from .reconnect_policy import DEFAULT_RECONNECT_POLICY
 from .utils._json import JsonValue, loads
 
 if TYPE_CHECKING:
@@ -26,6 +32,7 @@ if TYPE_CHECKING:
 
     from .aliyun.transport import AliyunTransport
     from .models import LoginResult
+    from .reconnect_policy import ReconnectPolicy
 
 log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.status_stream")
 
@@ -63,6 +70,13 @@ class StatusStream:
     Handlers run on the same asyncio event loop the caller is using;
     keep them non-blocking and dispatch heavy work via
     ``asyncio.create_task`` if needed.
+
+    ``reconnect`` selects what happens when the broker drops the
+    session: the default policy retries in the background with an
+    exponential backoff and only reports the failure once its attempts
+    run out. Pass ``reconnect=None`` to have the very first drop reach
+    :meth:`run_forever` immediately — the right choice for consumers
+    that already supervise the stream themselves.
     """
 
     def __init__(
@@ -72,12 +86,16 @@ class StatusStream:
         *,
         ca_certs: str | None = None,
         tls_context: ssl.SSLContext | None = None,
+        reconnect: ReconnectPolicy | None = DEFAULT_RECONNECT_POLICY,
     ) -> None:
         self._aliyun = aliyun
         self._login = login
         self._ca_certs = ca_certs
         self._tls_context = tls_context
+        self._reconnect_policy = reconnect
         self._transport: MqttTransport | None = None
+        self._reconnect_task: asyncio.Task[None] | None = None
+        self._stopping = False
         self._stop_event = asyncio.Event()
         self._connection_error: Exception | None = None
         self._on_silent_mode: OnBoolEvent | None = None
@@ -116,6 +134,41 @@ class StatusStream:
         """
         if self._transport is not None:
             return
+        self._stopping = False
+        self._transport = await self._open_transport()
+        self._connection_error = None
+        self._stop_event.clear()
+        log.info("Status stream live for %s", self._login.user_info.user_name)
+
+    async def stop(self) -> None:
+        """Tear down the MQTT session and any pending reconnect. Idempotent."""
+        if self._transport is None and self._reconnect_task is None:
+            return
+        self._stopping = True
+        await self._cancel_reconnect()
+        transport, self._transport = self._transport, None
+        if transport is not None:
+            await transport.disconnect()
+        self._stop_event.set()
+        log.info("Status stream stopped")
+
+    async def run_forever(self) -> None:
+        """Block the caller until :meth:`stop` is called or the task is cancelled.
+
+        Raises :class:`TransportError` if the MQTT connection drops and
+        the stream's :class:`ReconnectPolicy` cannot bring it back, so
+        consumers can rebuild the stream instead of blocking forever.
+        """
+        await self._stop_event.wait()
+        error = self._connection_error
+        if error is None:
+            return
+        if isinstance(error, TransportError):
+            raise error
+        raise TransportError(f"Failed to keep status stream alive: {error}") from error
+
+    async def _open_transport(self) -> MqttTransport:
+        """Connect, subscribe, and bind — tearing the session down on failure."""
         credentials = await derive_mqtt_credentials(self._aliyun, gateway_host=self._login.iot_host)
         transport = MqttTransport(
             credentials,
@@ -131,37 +184,56 @@ class StatusStream:
         except BaseException:
             await transport.disconnect()
             raise
-        self._transport = transport
-        self._connection_error = None
-        self._stop_event.clear()
-        log.info("Status stream live for %s", self._login.user_info.user_name)
-
-    async def stop(self) -> None:
-        """Tear down the MQTT session. Idempotent."""
-        if self._transport is None:
-            return
-        await self._transport.disconnect()
-        self._transport = None
-        self._stop_event.set()
-        log.info("Status stream stopped")
-
-    async def run_forever(self) -> None:
-        """Block the caller until :meth:`stop` is called or the task is cancelled.
-
-        Raises :class:`TransportError` if the MQTT connection drops while
-        waiting, so consumers can reconnect instead of blocking forever.
-        """
-        await self._stop_event.wait()
-        error = self._connection_error
-        if error is None:
-            return
-        if isinstance(error, TransportError):
-            raise error
-        raise TransportError(f"Failed to keep status stream alive: {error}") from error
+        return transport
 
     def _handle_connection_lost(self, exc: Exception) -> None:
-        """Record the dispatcher's death and release :meth:`run_forever` waiters."""
+        """Retry the session in the background, or report the drop right away."""
         log.warning("Status stream connection lost: %s", exc)
+        if self._reconnect_policy is None or self._stopping:
+            self._report_failure(exc)
+            return
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        self._reconnect_task = asyncio.create_task(self._reconnect(self._reconnect_policy, exc))
+
+    async def _reconnect(self, policy: ReconnectPolicy, cause: Exception) -> None:
+        """Rebuild the session on a backoff, reporting the drop if it never comes back."""
+        dead, self._transport = self._transport, None
+        if dead is not None:
+            await dead.disconnect()
+        for attempt in range(1, policy.max_attempts + 1):
+            await asyncio.sleep(policy.delay_for(attempt))
+            try:
+                self._transport = await self._open_transport()
+            except Exception as exc:
+                cause = exc
+                log.warning(
+                    "Status stream reconnect attempt %d/%d failed: %s",
+                    attempt,
+                    policy.max_attempts,
+                    exc,
+                )
+                continue
+            log.info("Status stream reconnected after %d attempt(s)", attempt)
+            return
+        self._report_failure(
+            TransportError(
+                f"Failed to reconnect the status stream after "
+                f"{policy.max_attempts} attempts: {cause}",
+            ),
+        )
+
+    async def _cancel_reconnect(self) -> None:
+        """Stop an in-flight reconnect and wait for it to unwind."""
+        task, self._reconnect_task = self._reconnect_task, None
+        if task is None:
+            return
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    def _report_failure(self, exc: Exception) -> None:
+        """Hand the failure to the consumer and release :meth:`run_forever` waiters."""
         self._connection_error = exc
         self._stop_event.set()
 
