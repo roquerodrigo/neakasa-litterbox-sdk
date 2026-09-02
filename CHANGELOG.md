@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.3](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.2...v0.2.3) (2026-09-02)
+
+
+### Documentation
+
+* add GitHub Sponsors button and support section ([5b9ce9a](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/5b9ce9aca407993ee9cfad34c7e4cb67697f8cf0))
+
+
+### Build System
+
+* require Python 3.14 ([e43fd54](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/e43fd5430fa9dd65f9569544d007b533f8c30ff1))
+
 ## [0.2.2](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.1...v0.2.2) (2026-08-07)
 
 
