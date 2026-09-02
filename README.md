@@ -3,6 +3,8 @@
 [![CI](https://github.com/roquerodrigo/neakasa-litterbox-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/roquerodrigo/neakasa-litterbox-sdk/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/neakasa-litterbox-sdk)](https://pypi.org/project/neakasa-litterbox-sdk/)
 
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=githubsponsors&logoColor=white&style=for-the-badge)](https://github.com/sponsors/roquerodrigo)
+
 Async Python SDK for the **Neakasa M1** self-cleaning cat litter box.
 
 > ⚠️ **Unofficial.** This project is not affiliated with, endorsed by,
@@ -395,6 +397,10 @@ and an Aliyun IoT API Gateway used for device-list and command paths),
 but consumers only see the high-level surface above — `login()`
 handles the multi-step bootstrap and `LoginResult` carries whatever
 credentials need to round-trip.
+
+## Support
+
+This SDK is built and maintained on personal time, on hardware bought for the purpose. If it is useful to you, consider [sponsoring the work](https://github.com/sponsors/roquerodrigo) — it keeps the devices, the testing and the releases coming.
 
 ## License
 
