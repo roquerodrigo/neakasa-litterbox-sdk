@@ -1,8 +1,7 @@
 name: Release
 
-# Three composable stages: release-please grooms the release pull request and
-# tags it, the lock is refreshed on the release branch so it lands carrying the
-# same version, and the tag is published to PyPI.
+# Two composable stages: release-please grooms the release pull request and
+# tags it, and the tag is published to PyPI.
 #
 # The `workflow_run.event == 'push'` condition is what stops a pull request with
 # green CI from cutting a release.
@@ -31,17 +30,6 @@ jobs:
       contents: write
       pull-requests: write
     uses: roquerodrigo/workflows/.github/workflows/release-please.yml@main
-    secrets:
-      release-token: ${{ secrets.RELEASE_PLEASE_PAT }}
-
-  sync-uv-lock:
-    needs: release
-    if: needs.release.outputs.release-pr != ''
-    permissions:
-      contents: read
-    uses: roquerodrigo/workflows/.github/workflows/sync-uv-lock.yml@main
-    with:
-      release-pr: ${{ needs.release.outputs.release-pr }}
     secrets:
       release-token: ${{ secrets.RELEASE_PLEASE_PAT }}
 
