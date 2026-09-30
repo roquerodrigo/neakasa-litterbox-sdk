@@ -8,6 +8,13 @@
   "packages": {
     ".": {
       "package-name": "neakasa-litterbox-sdk",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name.value==\"neakasa-litterbox-sdk\")].version"
+        }
+      ],
       "changelog-sections": [
         {
           "type": "feat",
