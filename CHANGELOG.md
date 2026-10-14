@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.2...v0.2.3) (2026-10-14)
+
+
+### Miscellaneous Chores
+
+* **release:** keep only user-facing changes in the changelog ([e30547b](https://github.com/roquerodrigo/neakasa-litterbox-sdk/commit/e30547b205fbf23a9078c130caddcb319541f8f8))
+
 ## [0.2.2](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.1...v0.2.2) (2026-08-07)
 
 
