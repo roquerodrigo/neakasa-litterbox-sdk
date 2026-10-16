@@ -12,6 +12,7 @@ from neakasa_litterbox_sdk import (
     LoginResult,
     NeakasaClient,
     NeakasaError,
+    SessionExpiredError,
     UserInfo,
 )
 
@@ -150,3 +151,65 @@ def test_watch_status_returns_stream() -> None:
     client._login_result = _login_result()
     stream = client.watch_status()
     assert isinstance(stream, StatusStream)
+
+
+@pytest.mark.parametrize("role", [DeviceRole.OWNER, DeviceRole.SHARED])
+@pytest.mark.parametrize(("weight", "unit"), [(4.8, "kg"), (10.58, "lb")])
+async def test_set_cat_weight_sends_only_weight_and_context(monkeypatch, role, weight, unit):
+    client = _client(monkeypatch, role=role)
+    post = AsyncMock(return_value={"code": 0, "data": None})
+    monkeypatch.setattr(client._transport, "authenticated_post", post)
+    await client.set_cat_weight("PB01", 7, weight, unit=unit, zone_seconds=-14400)
+    post.assert_awaited_once()
+    url, payload = post.await_args.args
+    assert url == client.region.web_url + "/catbox/cat/update"
+    assert payload == {
+        "device_name": "PB01",
+        "bind_status": role.value,
+        "id": 7,
+        "weight": weight,
+        "unit": unit,
+        "scene": "catDetail",
+        "zone": -14400,
+        "user_id": 400068852,
+    }
+    assert post.await_args.kwargs["encrypted_user_id"]
+    assert post.await_args.kwargs["session_token"]
+
+
+@pytest.mark.parametrize("weight", [0, -1, float("nan"), float("inf"), -float("inf"), True])
+async def test_set_cat_weight_rejects_invalid_weight_before_io(monkeypatch, weight):
+    client = _client(monkeypatch)
+    resolve = AsyncMock()
+    monkeypatch.setattr(client, "_resolve_role", resolve)
+    with pytest.raises(NeakasaError, match="weight must be finite and positive"):
+        await client.set_cat_weight("PB01", 7, weight, unit="kg")
+    resolve.assert_not_awaited()
+
+
+@pytest.mark.parametrize("cat_id", [0, -1, True])
+async def test_set_cat_weight_rejects_invalid_cat_id(monkeypatch, cat_id):
+    client = _client(monkeypatch)
+    with pytest.raises(NeakasaError, match="cat_id must be positive"):
+        await client.set_cat_weight("PB01", cat_id, 4.8, unit="kg")
+
+
+async def test_set_cat_weight_rejects_unknown_unit(monkeypatch):
+    client = _client(monkeypatch)
+    with pytest.raises(NeakasaError, match="unit must be"):
+        await client.set_cat_weight("PB01", 7, 4.8, unit="oz")
+
+
+async def test_set_cat_weight_requires_login():
+    client = NeakasaClient(email="user@example.com", password="pw")
+    with pytest.raises(NeakasaError, match="not authenticated"):
+        await client.set_cat_weight("PB01", 7, 4.8, unit="kg")
+
+
+async def test_set_cat_weight_does_not_retry_expired_session(monkeypatch):
+    client = _client(monkeypatch)
+    post = AsyncMock(return_value={"code": 1007, "data": None})
+    monkeypatch.setattr(client._transport, "authenticated_post", post)
+    with pytest.raises(SessionExpiredError):
+        await client.set_cat_weight("PB01", 7, 4.8, unit="kg")
+    post.assert_awaited_once()
