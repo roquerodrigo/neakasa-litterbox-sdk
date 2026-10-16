@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 from ._credentials import USER_AGENT
 from ._status_codes import ENVELOPE_SUCCESS_CODE
@@ -224,6 +225,67 @@ class NeakasaClient:
             context="list cats",
         )
         return Cat.list_from_response(data)
+
+    async def set_cat_weight(
+        self,
+        device_name: str,
+        cat_id: int,
+        weight: float,
+        *,
+        unit: Literal["kg", "lb"],
+        zone_seconds: int = 0,
+    ) -> None:
+        """Update an existing cat's profile weight, preserving other fields.
+
+        Pass the ``id`` from :meth:`list_cats`, a finite positive weight,
+        and its explicit unit. ``zone_seconds`` is the UTC offset, as in
+        :meth:`get_toilet_statistics`. Mirrors Android 2.3.4's
+        ``CatVm.addOrUpdateCat`` with ``scene=catDetail``; unrelated optional
+        profile fields are omitted. This does not assign historical visits.
+
+        Success means the cloud accepted the update. Use :meth:`list_cats`
+        to read back the saved profile. Mutations are never retried implicitly.
+        """
+        if isinstance(cat_id, bool) or cat_id <= 0:
+            raise NeakasaError("Failed to set cat weight: cat_id must be positive")
+        if isinstance(weight, bool) or not math.isfinite(weight) or weight <= 0:
+            raise NeakasaError("Failed to set cat weight: weight must be finite and positive")
+        if unit not in ("kg", "lb"):
+            raise NeakasaError("Failed to set cat weight: unit must be 'kg' or 'lb'")
+        self._require_session()
+        await self._authenticated_post(
+            "/catbox/cat/update",
+            {
+                "device_name": device_name,
+                "bind_status": (await self._resolve_role(device_name)).value,
+                "id": cat_id,
+                "weight": weight,
+                "unit": unit,
+                "scene": "catDetail",
+                "zone": zone_seconds,
+            },
+            context="set cat weight",
+        )
+
+    async def _authenticated_post(
+        self,
+        path: str,
+        params: JsonObject,
+        *,
+        context: str,
+    ) -> JsonValue:
+        """Issue a session-signed JSON POST and unwrap the response envelope."""
+        session = self._require_session()
+        envelope = await self._transport.authenticated_post(
+            f"{self._region.web_url}{path}",
+            {**params, "user_id": int(session.user_id)},
+            encrypted_user_id=aes_encrypt_with_boot_key(session.user_id),
+            session_token=generate_session_token(
+                session.user_token, session.aes_key, session.aes_iv
+            ),
+            language=self._language,
+        )
+        return _unwrap_envelope(envelope, context=context, auth=True)
 
     async def _authenticated_get(
         self,
