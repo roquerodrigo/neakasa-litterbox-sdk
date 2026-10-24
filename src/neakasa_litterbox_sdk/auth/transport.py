@@ -1,9 +1,9 @@
 """Minimal HTTP transport for Neakasa REST endpoints.
 
 Async-only: uses ``aiohttp`` so the whole SDK can run inside Home
-Assistant's event loop without thread hops. The Neakasa REST API
-expects GET requests for both pre-auth and post-auth flows (yes, even
-login is a GET). Three query-encoding styles are implemented here:
+Assistant's event loop without thread hops. Authentication and reads use
+GET requests (even login); profile updates use authenticated JSON POSTs.
+Three query-encoding styles are implemented here:
 
 - :meth:`signed_get` — standard ``?k1=v1&k2=v2`` form, pre-auth headers.
 - :meth:`signed_get_data_envelope` — single ``?data=<URL-encoded JSON>``
@@ -12,6 +12,7 @@ login is a GET). Three query-encoding styles are implemented here:
 - :meth:`authenticated_get` — post-auth "Scheme A": plain ``?k=v``
   query string, with ``uid`` and ``token`` headers replacing
   ``appId`` / ``sign``.
+- :meth:`authenticated_post` — JSON body with ``uid`` / ``token`` headers.
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.auth.transport")
 
 
 class HttpTransport:
-    """Issue signed GET requests against the Neakasa REST API."""
+    """Issue signed requests against the Neakasa REST API."""
 
     def __init__(
         self,
@@ -90,6 +91,33 @@ class HttpTransport:
         full_url = f"{url}?{urllib.parse.urlencode(params)}"
         headers = build_authenticated_headers(encrypted_user_id, session_token, language=language)
         return await self._do_get(full_url, url, headers)
+
+    async def authenticated_post(
+        self,
+        url: str,
+        params: JsonObject,
+        *,
+        encrypted_user_id: str,
+        session_token: str,
+        language: str = "en",
+    ) -> JsonObject:
+        """Send JSON using the app's authenticated ``sentPostV2`` format."""
+        headers = build_authenticated_headers(encrypted_user_id, session_token, language=language)
+        headers["Content-Type"] = "application/json"
+        log.debug("POST %s", url)
+        if self._session is None:
+            self._session = aiohttp.ClientSession(timeout=self._timeout)
+        try:
+            async with self._session.post(url, json=params, headers=headers) as resp:
+                body = await resp.read()
+                if resp.status >= HTTP_ERROR_STATUS:
+                    raise TransportError(
+                        f"Failed to POST {url}: HTTP {resp.status}",
+                        status_code=resp.status,
+                    )
+        except (aiohttp.ClientError, TimeoutError) as exc:
+            raise TransportError(f"Failed to POST {url}: {exc}") from exc
+        return loads(body)
 
     async def _do_get(
         self,

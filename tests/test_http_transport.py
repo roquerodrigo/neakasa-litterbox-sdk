@@ -39,6 +39,7 @@ class _FakeSession:
         self._raise_exc = raise_exc
         self.closed = False
         self.last_get: tuple[str, dict[str, str]] | None = None
+        self.last_post = None
 
     def get(self, url: str, headers: dict[str, str]) -> _FakeResponse:
         self.last_get = (url, headers)
@@ -49,6 +50,13 @@ class _FakeSession:
 
     async def close(self) -> None:
         self.closed = True
+
+    def post(self, url, *, json, headers):
+        self.last_post = (url, json, headers)
+        if self._raise_exc is not None:
+            raise self._raise_exc
+        assert self._response is not None
+        return self._response
 
 
 async def test_signed_get_decodes_json_object() -> None:
@@ -135,3 +143,57 @@ async def test_close_is_idempotent_when_never_used() -> None:
     transport = HttpTransport()
     await transport.close()  # no session was ever created
     assert transport._session is None
+
+
+async def test_authenticated_post_sends_json_and_session_headers() -> None:
+    session = _FakeSession(_FakeResponse(200, b'{"code": 0, "data": null}'))
+    transport = HttpTransport(session=session)  # type: ignore[arg-type]
+    result = await transport.authenticated_post(
+        "https://host/api/catbox/cat/update",
+        {"id": 7, "weight": 4.8, "unit": "kg"},
+        encrypted_user_id="enc",
+        session_token="tok",
+        language="pt",
+    )
+    assert result == {"code": 0, "data": None}
+    url, payload, headers = session.last_post
+    assert url == "https://host/api/catbox/cat/update"
+    assert payload == {"id": 7, "weight": 4.8, "unit": "kg"}
+    assert headers["Content-Type"] == "application/json"
+    assert headers["uid"] == "enc"
+    assert headers["token"] == "tok"
+    assert headers["Accept-Language"] == "pt"
+    assert "appId" not in headers
+
+
+@pytest.mark.parametrize("error", [aiohttp.ClientError("offline"), TimeoutError()])
+async def test_authenticated_post_wraps_network_errors(error) -> None:
+    session = _FakeSession(raise_exc=error)
+    transport = HttpTransport(session=session)  # type: ignore[arg-type]
+    with pytest.raises(TransportError, match="Failed to POST"):
+        await transport.authenticated_post(
+            "https://host/api", {}, encrypted_user_id="enc", session_token="tok"
+        )
+
+
+async def test_authenticated_post_http_error() -> None:
+    session = _FakeSession(_FakeResponse(503, b"unavailable"))
+    transport = HttpTransport(session=session)  # type: ignore[arg-type]
+    with pytest.raises(TransportError) as exc_info:
+        await transport.authenticated_post(
+            "https://host/api", {}, encrypted_user_id="enc", session_token="tok"
+        )
+    assert exc_info.value.status_code == 503
+
+
+async def test_authenticated_post_creates_and_closes_owned_session(monkeypatch) -> None:
+    session = _FakeSession(_FakeResponse(200, b'{"code": 0}'))
+    monkeypatch.setattr(
+        "neakasa_litterbox_sdk.auth.transport.aiohttp.ClientSession", lambda timeout: session
+    )
+    async_transport = HttpTransport()
+    await async_transport.authenticated_post(
+        "https://host/api", {}, encrypted_user_id="enc", session_token="tok"
+    )
+    await async_transport.close()
+    assert session.closed

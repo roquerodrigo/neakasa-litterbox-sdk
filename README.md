@@ -98,6 +98,7 @@ All I/O methods are coroutines (prefix every call with `await`).
 | `list_devices` | `async () -> list[Device]` | Devices on the account (mobile-app "device picker"). |
 | `get_status` | `async (device_name: str) -> DeviceStatus` | Live property snapshot — sand level, cat presence, mode switches. |
 | `list_cats` | `async (device_name: str) -> list[Cat]` | Cat profiles registered against a device. |
+| `set_cat_weight` | `async (device_name: str, cat_id: int, weight: float, *, unit: Literal["kg", "lb"], zone_seconds: int = 0) -> None` | Update an existing cat's profile weight without changing other profile fields. |
 | `get_toilet_records` | `async (device_name: str, start_time: int, end_time: int) -> list[ToiletRecord]` | Visit history (unix-second bounds). |
 | `get_toilet_statistics` | `async (device_name: str, start_time: int, end_time: int, *, zone_seconds: int = 0) -> list[DailyStatistics]` | Per-day aggregates. `zone_seconds` is the UTC offset for bucket alignment (e.g. `-10800` for `America/Sao_Paulo`). |
 | `start_clean` / `stop_clean` | `async (device_name: str) -> None` | Run / cancel a cleaning cycle — mobile app's "Clean Now". |
@@ -115,6 +116,23 @@ All I/O methods are coroutines (prefix every call with `await`).
 | `region` | `Region` | The cloud region this client targets. |
 | `is_authenticated` | `bool` | True once `login()` has succeeded. |
 | `login_result` | `LoginResult \| None` | The active session, or `None`. |
+
+To update a cat's profile weight, use its `id` from `list_cats()` and supply
+the weight's unit explicitly:
+
+```python
+cats = await client.list_cats(device_name)
+cat = next(cat for cat in cats if cat.name == "Mini")
+await client.set_cat_weight(device_name, cat.id, 4.8, unit="kg", zone_seconds=-14400)
+updated = next(item for item in await client.list_cats(device_name) if item.id == cat.id)
+```
+
+`weight` must be finite and positive, and `cat_id` must be positive. The method
+sends only the weight, unit, and request context; name, birthday, avatar, and
+other profile fields are preserved. A successful call means the cloud accepted
+the update; read back with `list_cats()` to confirm it. It does not assign past
+visits to the cat. As with statistics, `zone_seconds` is the UTC offset in seconds
+(default UTC). The request format follows Android 2.3.4's `CatVm.addOrUpdateCat`.
 
 ### Models
 
