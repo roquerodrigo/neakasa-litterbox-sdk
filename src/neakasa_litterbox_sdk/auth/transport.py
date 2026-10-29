@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import urllib.parse
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import aiohttp
 
@@ -64,7 +64,7 @@ class HttpTransport:
     ) -> JsonObject:
         """Issue a signed GET request with classic query parameters."""
         full_url = f"{url}?{urllib.parse.urlencode(params)}"
-        return await self._do_get(full_url, url, build_signed_headers(language=language))
+        return await self._send("GET", full_url, url, build_signed_headers(language=language))
 
     async def signed_get_data_envelope(
         self,
@@ -76,7 +76,7 @@ class HttpTransport:
         """Issue a signed GET that wraps the params as ``?data=<JSON>``."""
         data_param = urllib.parse.quote(json.dumps(params, separators=(",", ":")), safe="")
         full_url = f"{url}?data={data_param}"
-        return await self._do_get(full_url, url, build_signed_headers(language=language))
+        return await self._send("GET", full_url, url, build_signed_headers(language=language))
 
     async def authenticated_get(
         self,
@@ -90,7 +90,7 @@ class HttpTransport:
         """Scheme A: plain query params + ``uid`` / ``token`` headers."""
         full_url = f"{url}?{urllib.parse.urlencode(params)}"
         headers = build_authenticated_headers(encrypted_user_id, session_token, language=language)
-        return await self._do_get(full_url, url, headers)
+        return await self._send("GET", full_url, url, headers)
 
     async def authenticated_post(
         self,
@@ -104,42 +104,37 @@ class HttpTransport:
         """Send JSON using the app's authenticated ``sentPostV2`` format."""
         headers = build_authenticated_headers(encrypted_user_id, session_token, language=language)
         headers["Content-Type"] = "application/json"
-        log.debug("POST %s", url)
-        if self._session is None:
-            self._session = aiohttp.ClientSession(timeout=self._timeout)
-        try:
-            async with self._session.post(url, json=params, headers=headers) as resp:
-                body = await resp.read()
-                if resp.status >= HTTP_ERROR_STATUS:
-                    raise TransportError(
-                        f"Failed to POST {url}: HTTP {resp.status}",
-                        status_code=resp.status,
-                    )
-        except (aiohttp.ClientError, TimeoutError) as exc:
-            raise TransportError(f"Failed to POST {url}: {exc}") from exc
-        return loads(body)
+        return await self._send("POST", url, url, headers, json_body=params)
 
-    async def _do_get(
+    async def _send(
         self,
+        method: Literal["GET", "POST"],
         full_url: str,
         base_url: str,
         headers: Mapping[str, str],
+        *,
+        json_body: JsonObject | None = None,
     ) -> JsonObject:
-        log.debug("GET %s", base_url)
+        log.debug("%s %s", method, base_url)
         if self._session is None:
             self._session = aiohttp.ClientSession(timeout=self._timeout)
         try:
-            async with self._session.get(full_url, headers=dict(headers)) as resp:
+            request = (
+                self._session.post(full_url, json=json_body, headers=dict(headers))
+                if method == "POST"
+                else self._session.get(full_url, headers=dict(headers))
+            )
+            async with request as resp:
                 body = await resp.read()
                 if resp.status >= HTTP_ERROR_STATUS:
                     raise TransportError(
-                        f"Failed to GET {base_url}: HTTP {resp.status}",
+                        f"Failed to {method} {base_url}: HTTP {resp.status}",
                         status_code=resp.status,
                     )
         # ``ClientTimeout`` surfaces as the builtin ``TimeoutError``, which is
         # not an ``aiohttp.ClientError`` — without it a slow cloud escapes the
         # SDK's exception hierarchy entirely.
         except (aiohttp.ClientError, TimeoutError) as exc:
-            raise TransportError(f"Failed to GET {base_url}: {exc}") from exc
+            raise TransportError(f"Failed to {method} {base_url}: {exc}") from exc
         log.debug("Response body: %s", body[:2048])
         return loads(body)
