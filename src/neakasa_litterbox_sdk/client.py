@@ -252,7 +252,6 @@ class NeakasaClient:
             raise NeakasaError("Failed to set cat weight: weight must be finite and positive")
         if unit not in ("kg", "lb"):
             raise NeakasaError("Failed to set cat weight: unit must be 'kg' or 'lb'")
-        self._require_session()
         await self._authenticated_post(
             "/catbox/cat/update",
             {
