@@ -1,7 +1,7 @@
 name: Release
 
-# Two composable stages: release-please grooms the release pull request and
-# tags it, and the tag is published to PyPI.
+# Two composable stages: Release Autopilot keeps the release pull request up to
+# date and tags it, and the tag is published to PyPI.
 #
 # The `workflow_run.event == 'push'` condition is what stops a pull request with
 # green CI from cutting a release.
@@ -14,38 +14,51 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to republish to PyPI, for example v1.1.0. Skips release-please."
+        description: "Tag to republish to PyPI, for example v1.1.0. Skips the release job."
         required: true
         type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions: {}
 
 jobs:
   release:
+    name: Release
     if: >-
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
-    uses: roquerodrigo/workflows/.github/workflows/release-please.yml@main
-    secrets:
-      release-token: ${{ secrets.RELEASE_PLEASE_PAT }}
-      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Release
+        id: release
+        uses: roquerodrigo/release-autopilot@latest
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
   publish:
     needs: release
     if: >-
       always() && (
         github.event_name == 'workflow_dispatch' ||
-        needs.release.outputs.release-created == 'true'
+        needs.release.outputs.released == 'true'
       )
     permissions:
       contents: read
     uses: roquerodrigo/workflows/.github/workflows/publish-pypi.yml@main
     with:
       package: neakasa-litterbox-sdk
-      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release.outputs.tag-name }}
+      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release.outputs.tag }}
     secrets:
       pypi-token: ${{ secrets.PYPI_API_TOKEN }}
