@@ -58,6 +58,53 @@ def test_login_result_round_trips_non_default_iot_host() -> None:
     assert restored.iot_host == "eu-central-1.api-iot.aliyuncs.com"
 
 
+def _resolved(iot_host: str, iot_oa_host: str) -> LoginResult:
+    return LoginResult(
+        user_id="400068852",
+        user_token="utoken",
+        aes_key="key",
+        aes_iv="iv",
+        user_info=UserInfo(1, "u", 2, "tok"),
+        issued_at=1_700_000_000.0,
+        iot_token="iot",
+        iot_host=iot_host,
+        iot_oa_host=iot_oa_host,
+    )
+
+
+def test_login_result_round_trips_resolved_region() -> None:
+    original = _resolved("eu-central-1.api-iot.aliyuncs.com", "oa.eu.example.com")
+    restored = LoginResult.from_dict(original.to_dict())
+    assert restored == original
+    assert restored.has_resolved_region
+
+
+def test_login_result_from_dict_leaves_region_unresolved_for_older_cache() -> None:
+    data = dict(_resolved("us-east-1.api-iot.aliyuncs.com", "oa").to_dict())
+    del data["iot_oa_host"]
+    restored = LoginResult.from_dict(data)
+    assert restored.iot_oa_host == ""
+    assert not restored.has_resolved_region
+
+
+def test_with_region_of_copies_resolved_hosts() -> None:
+    fresh = _resolved("us-east-1.api-iot.aliyuncs.com", "")
+    known = _resolved("eu-central-1.api-iot.aliyuncs.com", "oa.eu.example.com")
+    carried = fresh.with_region_of(known)
+    assert carried.iot_host == "eu-central-1.api-iot.aliyuncs.com"
+    assert carried.iot_oa_host == "oa.eu.example.com"
+    assert carried.iot_token == fresh.iot_token
+
+
+@pytest.mark.parametrize(
+    "other",
+    [None, _resolved("eu-central-1.api-iot.aliyuncs.com", "")],
+)
+def test_with_region_of_ignores_unresolved_sessions(other: LoginResult | None) -> None:
+    fresh = _resolved("us-east-1.api-iot.aliyuncs.com", "")
+    assert fresh.with_region_of(other) is fresh
+
+
 def test_login_result_from_dict_defaults_iot_host_for_legacy_cache() -> None:
     """Caches serialized before ``iot_host`` existed fall back to the US host."""
     legacy = {

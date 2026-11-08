@@ -62,8 +62,48 @@ async def test_full_handshake_returns_iot_session_with_endpoint() -> None:
     session = await exchange_for_iot_session(transport, "ali-auth-token")
     assert session.iot_token == "iot-token-789"
     assert session.api_gateway_endpoint == "api.example.com"
+    assert session.oa_gateway_endpoint == "oa.example.com"
     assert transport.call.await_count == 2
     assert transport.call_oa.await_count == 2
+
+
+async def test_known_region_skips_region_lookup() -> None:
+    transport = _transport(
+        call_side=[_token_response()],
+        oa_side=[_vid_response(), _sid_response()],
+    )
+    session = await exchange_for_iot_session(
+        transport,
+        "ali-auth-token",
+        oa_endpoint="oa.known.example.com",
+        api_endpoint="api.known.example.com",
+    )
+    assert session.iot_token == "iot-token-789"
+    assert session.api_gateway_endpoint == "api.known.example.com"
+    assert session.oa_gateway_endpoint == "oa.known.example.com"
+    assert transport.call.await_count == 1
+    assert transport.call.await_args.kwargs["host"] == "api.known.example.com"
+    assert transport.call_oa.await_args_list[0].kwargs["host"] == "oa.known.example.com"
+
+
+async def test_failure_in_known_region_resolves_it_again() -> None:
+    transport = _transport(
+        call_side=[_region_response(), _token_response()],
+        oa_side=[
+            {"success": "false", "errorMsg": "wrong region"},
+            _vid_response(),
+            _sid_response(),
+        ],
+    )
+    session = await exchange_for_iot_session(
+        transport,
+        "ali-auth-token",
+        oa_endpoint="oa.stale.example.com",
+        api_endpoint="api.stale.example.com",
+    )
+    assert session.api_gateway_endpoint == "api.example.com"
+    assert session.oa_gateway_endpoint == "oa.example.com"
+    assert transport.call.await_args_list[0].kwargs["host"] == "cn-shanghai.api-iot.aliyuncs.com"
 
 
 async def test_empty_auth_token_raises_before_network() -> None:

@@ -44,14 +44,38 @@ class LoginResult:
     issued_at: float
     iot_token: str = ""
     iot_host: str = _DEFAULT_IOT_HOST
+    iot_oa_host: str = ""
+
+    @property
+    def has_resolved_region(self) -> bool:
+        """``True`` once a handshake resolved both regional hosts."""
+        return bool(self.iot_oa_host)
+
+    def with_region_of(self, other: LoginResult | None) -> LoginResult:
+        """Return a copy carrying ``other``'s regional hosts, when it resolved them.
+
+        The region belongs to the account, not to the session, so a fresh
+        login can reuse the one an earlier session of the same account
+        resolved and skip the region lookup of the next handshake.
+        """
+        if other is None or not other.has_resolved_region:
+            return self
+        return dataclasses.replace(self, iot_host=other.iot_host, iot_oa_host=other.iot_oa_host)
 
     def with_iot_token(self, iot_token: str) -> LoginResult:
         """Return a copy with ``iot_token`` set (the dataclass is frozen)."""
         return dataclasses.replace(self, iot_token=iot_token)
 
-    def with_iot_session(self, iot_token: str, iot_host: str) -> LoginResult:
-        """Return a copy with both ``iot_token`` and ``iot_host`` updated."""
-        return dataclasses.replace(self, iot_token=iot_token, iot_host=iot_host)
+    def with_iot_session(
+        self,
+        iot_token: str,
+        iot_host: str,
+        iot_oa_host: str = "",
+    ) -> LoginResult:
+        """Return a copy with ``iot_token`` and the regional hosts updated."""
+        return dataclasses.replace(
+            self, iot_token=iot_token, iot_host=iot_host, iot_oa_host=iot_oa_host
+        )
 
     @classmethod
     def from_json(cls, raw: JsonObject) -> LoginResult:
@@ -86,6 +110,7 @@ class LoginResult:
             "issued_at": self.issued_at,
             "iot_token": self.iot_token,
             "iot_host": self.iot_host,
+            "iot_oa_host": self.iot_oa_host,
         }
 
     @classmethod
@@ -100,6 +125,7 @@ class LoginResult:
             issued_at=get_float(data, "issued_at"),
             iot_token=get_str(data, "iot_token"),
             iot_host=get_str(data, "iot_host", default=_DEFAULT_IOT_HOST),
+            iot_oa_host=get_str(data, "iot_oa_host"),
         )
 
     def age_seconds(self, now: float | None = None) -> float:

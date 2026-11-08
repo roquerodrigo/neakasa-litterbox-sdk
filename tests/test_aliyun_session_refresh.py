@@ -152,9 +152,11 @@ async def test_refresh_iot_session_falls_back_to_full_relogin(
     login_rest_mock = AsyncMock()
     monkeypatch.setattr(client, "_login_rest", login_rest_mock)
 
+    session = client.login_result
+
     await client._refresh_iot_session()
 
-    login_rest_mock.assert_awaited_once()
+    login_rest_mock.assert_awaited_once_with(session)
     assert auth_call_count == 2
 
 

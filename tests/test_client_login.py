@@ -43,7 +43,7 @@ async def test_login_fresh_runs_rest_then_handshake(monkeypatch: pytest.MonkeyPa
     client = _client()
     calls: list[str] = []
 
-    async def _rest() -> None:
+    async def _rest(_previous: LoginResult | None) -> None:
         calls.append("rest")
         client._login_result = _login_result()
 
@@ -120,6 +120,33 @@ async def test_login_cached_without_iot_token_only_handshakes(
     # Something was minted -> a fresh instance, not the cached one.
     assert result is not cached
     assert result.iot_token == "fresh-iot-token"
+
+
+async def test_fresh_login_keeps_region_resolved_by_previous_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A fresh login after a dropped session carries the account's region."""
+    client = _client()
+    previous = _login_result(iot_token="old").with_iot_session(
+        "old", "us-east-1.api-iot.aliyuncs.com", "living-account.us-east-1.aliyuncs.com"
+    )
+    client._login_result = previous
+    received: list[LoginResult | None] = []
+
+    async def _rest(previous_session: LoginResult | None) -> None:
+        received.append(previous_session)
+        client._login_result = _login_result()
+
+    async def _aliyun() -> str:
+        client._login_result = _login_result(iot_token="new")
+        return "new"
+
+    monkeypatch.setattr(client, "_login_rest", _rest)
+    monkeypatch.setattr(client, "_authenticate_aliyun", _aliyun)
+
+    await client.login()
+
+    assert received == [previous]
 
 
 def test_region_property() -> None:

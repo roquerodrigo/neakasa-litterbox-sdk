@@ -101,6 +101,75 @@ async def test_authenticate_aliyun_stores_iot_token(monkeypatch: pytest.MonkeyPa
     assert client.login_result.iot_host == "eu-central-1.api-iot.aliyuncs.com"
 
 
+async def test_authenticate_aliyun_reuses_resolved_region(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = NeakasaClient(email="user@example.com", password="pw")
+    client._login_result = _login_result(iot_token="old").with_iot_session(
+        "old", "us-east-1.api-iot.aliyuncs.com", "living-account.us-east-1.aliyuncs.com"
+    )
+    exchange = AsyncMock(
+        return_value=AliyunSession(
+            iot_token="fresh-iot-token",
+            api_gateway_endpoint="us-east-1.api-iot.aliyuncs.com",
+            oa_gateway_endpoint="living-account.us-east-1.aliyuncs.com",
+        )
+    )
+    monkeypatch.setattr("neakasa_litterbox_sdk.client.exchange_for_iot_session", exchange)
+
+    await client._authenticate_aliyun()
+
+    assert exchange.await_args.kwargs["oa_endpoint"] == "living-account.us-east-1.aliyuncs.com"
+    assert exchange.await_args.kwargs["api_endpoint"] == "us-east-1.api-iot.aliyuncs.com"
+    assert client.login_result is not None
+    assert client.login_result.iot_oa_host == "living-account.us-east-1.aliyuncs.com"
+
+
+async def test_authenticate_aliyun_resolves_unknown_region(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = NeakasaClient(email="user@example.com", password="pw")
+    client._login_result = _login_result()
+    exchange = AsyncMock(
+        return_value=AliyunSession(
+            iot_token="fresh-iot-token",
+            api_gateway_endpoint="us-east-1.api-iot.aliyuncs.com",
+            oa_gateway_endpoint="living-account.us-east-1.aliyuncs.com",
+        )
+    )
+    monkeypatch.setattr("neakasa_litterbox_sdk.client.exchange_for_iot_session", exchange)
+
+    await client._authenticate_aliyun()
+
+    assert exchange.await_args.kwargs["oa_endpoint"] == ""
+    assert exchange.await_args.kwargs["api_endpoint"] == ""
+
+
+async def test_login_rest_keeps_region_of_previous_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = NeakasaClient(email="user@example.com", password="pw")
+    envelope = {
+        "code": 0,
+        "data": {
+            "loginToken": "",
+            "userInfo": {"userId": 42, "aliUserId": 1, "aliAuthenticationToken": "ali"},
+        },
+    }
+    monkeypatch.setattr(
+        client._transport, "signed_get_data_envelope", AsyncMock(return_value=envelope)
+    )
+    previous = _login_result(iot_token="old").with_iot_session(
+        "old", "eu-central-1.api-iot.aliyuncs.com", "oa.eu.example.com"
+    )
+
+    result = await client._login_rest(previous)
+
+    assert result.iot_token == ""
+    assert result.iot_host == "eu-central-1.api-iot.aliyuncs.com"
+    assert result.iot_oa_host == "oa.eu.example.com"
+
+
 def test_expect_object_passes_through_mapping() -> None:
     assert _expect_object({"a": 1}, context="probe") == {"a": 1}
 
