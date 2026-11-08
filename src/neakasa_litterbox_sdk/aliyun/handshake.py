@@ -14,7 +14,11 @@ Four-step pipeline:
    ``authCode = <sid>`` → returns the final ``iotToken``.
 
 Step 1 always hits ``cn-shanghai``; the regional split happens in the
-response so the rest of the chain follows the user's region.
+response so the rest of the chain follows the user's region. The region is
+stable per account, and the first connection to ``cn-shanghai`` takes
+seconds from most of the world, so callers that already know both endpoints
+pass them in to skip step 1; the chain falls back to resolving them again
+when it fails there.
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ class AliyunSession:
 
     iot_token: str
     api_gateway_endpoint: str
+    oa_gateway_endpoint: str = ""
 
 
 async def exchange_for_iot_session(
@@ -50,17 +55,48 @@ async def exchange_for_iot_session(
     ali_authentication_token: str,
     *,
     language: str = "en-US",
+    oa_endpoint: str = "",
+    api_endpoint: str = "",
 ) -> AliyunSession:
-    """Run the 4-step OpenAccount handshake and return token + regional host."""
+    """Run the OpenAccount handshake and return token + regional hosts.
+
+    With both ``oa_endpoint`` and ``api_endpoint`` given, the region lookup
+    is skipped; if the chain fails against them, the region is resolved
+    again and the chain retried once.
+    """
     if not ali_authentication_token:
         raise NeakasaError(
             "Failed to authenticate Aliyun: aliAuthenticationToken is empty",
         )
+    if oa_endpoint and api_endpoint:
+        try:
+            return await _exchange_in_region(
+                transport, ali_authentication_token, oa_endpoint, api_endpoint, language
+            )
+        except NeakasaError as exc:
+            log.debug("Handshake against the known region failed (%s); resolving it again", exc)
     oa_endpoint, api_endpoint = await _get_region(transport, ali_authentication_token, language)
+    return await _exchange_in_region(
+        transport, ali_authentication_token, oa_endpoint, api_endpoint, language
+    )
+
+
+async def _exchange_in_region(
+    transport: AliyunTransport,
+    ali_authentication_token: str,
+    oa_endpoint: str,
+    api_endpoint: str,
+    language: str,
+) -> AliyunSession:
+    """Run steps 2-4 against the account's regional endpoints."""
     vid = await _get_vid(transport, oa_endpoint)
     sid = await _get_sid(transport, oa_endpoint, vid, ali_authentication_token)
     iot_token = await _create_iot_token(transport, api_endpoint, sid, language)
-    return AliyunSession(iot_token=iot_token, api_gateway_endpoint=api_endpoint)
+    return AliyunSession(
+        iot_token=iot_token,
+        api_gateway_endpoint=api_endpoint,
+        oa_gateway_endpoint=oa_endpoint,
+    )
 
 
 async def _get_region(

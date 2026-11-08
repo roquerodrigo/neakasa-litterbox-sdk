@@ -132,17 +132,21 @@ class NeakasaClient:
         that identity check distinguishes "minted something" from
         "nothing changed".
         """
-        self._login_result = cached
+        previous, self._login_result = self._login_result, cached
         if self._login_result is not None:
             self._aliyun_host = self._login_result.iot_host
         if self._login_result is None:
-            await self._login_rest()
+            await self._login_rest(previous)
         if not self._require_session().iot_token:
             await self._authenticate_aliyun()
         return self._require_session()
 
-    async def _login_rest(self) -> LoginResult:
-        """Issue a fresh REST login and store the new ``LoginResult``."""
+    async def _login_rest(self, previous: LoginResult | None = None) -> LoginResult:
+        """Issue a fresh REST login and store the new ``LoginResult``.
+
+        The new result keeps the regional hosts ``previous`` resolved, so
+        the handshake that follows skips the region lookup.
+        """
         envelope = await self._transport.signed_get_data_envelope(
             self._region.login_url,
             self._build_login_params(),
@@ -152,7 +156,7 @@ class NeakasaClient:
             _unwrap_envelope(envelope, context="login", auth=True),
             context="login",
         )
-        result = LoginResult.from_json(login_data)
+        result = LoginResult.from_json(login_data).with_region_of(previous)
         self._login_result = result
         log.info("Logged in as %s (region=%s)", self._email, self._region.name)
         return result
@@ -623,15 +627,16 @@ class NeakasaClient:
             await self._authenticate_aliyun()
         except ApiError, AuthenticationError, NeakasaError:
             log.info("Aliyun handshake failed, attempting full re-login")
-            await self._login_rest()
+            await self._login_rest(self._login_result)
             await self._authenticate_aliyun()
 
     async def _authenticate_aliyun(self) -> str:
         """Exchange the REST session for an Aliyun IoT session and return the new token.
 
-        Runs the 4-step OpenAccount handshake (region/get → connect.json
+        Runs the OpenAccount handshake (region/get → connect.json
         → loginbyoauth.json → createSessionByAuthCode) and stores the
-        resulting ``iotToken`` on :attr:`login_result`. :meth:`login`
+        resulting ``iotToken`` and regional hosts on :attr:`login_result`.
+        The region lookup is skipped when the session already carries them. :meth:`login`
         calls this lazily when no IoT token is cached.
         """
         session = self._require_session()
@@ -639,9 +644,15 @@ class NeakasaClient:
             self._aliyun,
             session.user_info.ali_authentication_token,
             language=f"{self._language}-US",
+            oa_endpoint=session.iot_oa_host,
+            api_endpoint=session.iot_host if session.has_resolved_region else "",
         )
         self._aliyun_host = iot_session.api_gateway_endpoint
-        self._login_result = session.with_iot_session(iot_session.iot_token, self._aliyun_host)
+        self._login_result = session.with_iot_session(
+            iot_session.iot_token,
+            self._aliyun_host,
+            iot_session.oa_gateway_endpoint,
+        )
         log.debug("IoT session established for %s via host %s", self._email, self._aliyun_host)
         return iot_session.iot_token
 

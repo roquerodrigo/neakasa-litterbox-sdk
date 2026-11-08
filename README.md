@@ -321,6 +321,13 @@ asyncio.run(run())
 decides their TTL policy and skips `cached=` whenever they want a
 refresh.
 
+A persisted result also carries the account's Aliyun region. The IoT
+handshake normally starts by asking `cn-shanghai` for it, and that first
+connection takes seconds from most of the world; with the region known,
+the handshake goes straight to the regional hosts, and a fresh `login()`
+on the same client keeps the region an earlier session resolved. If the
+regional hosts reject the handshake, the SDK resolves the region again.
+
 ## Handling token expiry
 
 The SDK does not refresh the session automatically. On
