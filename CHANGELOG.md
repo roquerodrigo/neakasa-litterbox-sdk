@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.4](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.3...v0.2.4) (2026-11-08)
+
+### Improvements
+
+- Signing in and renewing the IoT session is faster, because the account's regional servers are remembered instead of being looked up on every handshake. ([#72](https://github.com/roquerodrigo/neakasa-litterbox-sdk/pull/72))
+
 ## [0.2.3](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.2...v0.2.3) (2026-10-30)
 
 
