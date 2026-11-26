@@ -7,8 +7,6 @@ from enum import IntEnum
 
 log: logging.Logger = logging.getLogger("neakasa_litterbox_sdk.models.operating_state")
 
-# Codes already warned about, so a persistent unmapped state doesn't spam
-# the log on every poll/push — warn once per distinct value per process.
 _warned_codes: set[int] = set()
 
 
@@ -21,8 +19,10 @@ class OperatingState(IntEnum):
     the mobile app's status label with live MQTT pushes: ``2`` while the
     app showed "cleaning", ``1`` while "restoring", ``3`` during the
     auto-level pass, ``5`` while a cat was inside the box (the app labels
-    this "Cat appears"), ``0`` at rest. (``4`` has not been observed yet;
-    it falls back to ``UNKNOWN``.)
+    this "Cat appears"), ``0`` at rest. ``9`` arrives in the middle of a
+    cleaning cycle, together with a device event, and the cycle resumes
+    once it clears, finishing with the usual drum time. Codes without a
+    member (``4``, ``6``, ``7`` among them) fall back to ``UNKNOWN``.
     """
 
     UNKNOWN = -1
@@ -31,6 +31,7 @@ class OperatingState(IntEnum):
     CLEANING = 2
     LEVELING = 3
     CAT_APPEARS = 5
+    CLEANING_INTERRUPTED = 9
 
     @classmethod
     def from_code(cls, value: int) -> OperatingState:
