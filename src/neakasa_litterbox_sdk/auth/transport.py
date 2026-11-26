@@ -26,6 +26,7 @@ import aiohttp
 
 from .._status_codes import HTTP_ERROR_STATUS
 from ..exceptions import TransportError
+from ..utils._errors import describe_cause
 from ..utils._json import loads
 from .signing import build_authenticated_headers, build_signed_headers
 
@@ -135,6 +136,6 @@ class HttpTransport:
         # not an ``aiohttp.ClientError`` — without it a slow cloud escapes the
         # SDK's exception hierarchy entirely.
         except (aiohttp.ClientError, TimeoutError) as exc:
-            raise TransportError(f"Failed to {method} {base_url}: {exc}") from exc
+            raise TransportError(f"Failed to {method} {base_url}: {describe_cause(exc)}") from exc
         log.debug("Response body: %s", body[:2048])
         return loads(body)

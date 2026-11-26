@@ -11,6 +11,7 @@ import aiohttp
 
 from .._status_codes import HTTP_ERROR_STATUS
 from ..exceptions import TransportError
+from ..utils._errors import describe_cause
 from ..utils._json import loads
 from .envelope import build_envelope
 from .oa_signing import build_oa_headers
@@ -110,7 +111,7 @@ class AliyunTransport:
         # not an ``aiohttp.ClientError`` — without it a slow cloud escapes the
         # SDK's exception hierarchy entirely.
         except (aiohttp.ClientError, TimeoutError) as exc:
-            raise TransportError(f"Failed to POST {path}: {exc}") from exc
+            raise TransportError(f"Failed to POST {path}: {describe_cause(exc)}") from exc
         log.debug("Response body: %s", raw[:2048])
         return loads(raw)
 
