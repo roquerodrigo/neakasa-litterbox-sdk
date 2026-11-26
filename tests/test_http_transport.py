@@ -112,7 +112,9 @@ async def test_timeout_is_wrapped() -> None:
     # a ClientError, so it has to be caught explicitly or it escapes the SDK.
     session = _FakeSession(raise_exc=TimeoutError)
     transport = HttpTransport(session=session)  # type: ignore[arg-type]
-    with pytest.raises(TransportError, match="Failed to GET"):
+    with pytest.raises(
+        TransportError, match=r"^Failed to GET https://host/api: request timed out$"
+    ):
         await transport.signed_get("https://host/api", {})
 
 

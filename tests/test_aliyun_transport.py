@@ -94,7 +94,7 @@ async def test_post_error_status_raises_transport_error() -> None:
 async def test_post_client_error_is_wrapped() -> None:
     session = _FakeSession(raise_exc=aiohttp.ClientError("network down"))
     transport = AliyunTransport(session=session)  # type: ignore[arg-type]
-    with pytest.raises(TransportError, match="Failed to POST"):
+    with pytest.raises(TransportError, match=r"^Failed to POST /x: network down$"):
         await transport.call("/x", api_version="1.0", payload={})
 
 
@@ -103,7 +103,7 @@ async def test_post_timeout_is_wrapped() -> None:
     # a ClientError, so it has to be caught explicitly or it escapes the SDK.
     session = _FakeSession(raise_exc=TimeoutError)
     transport = AliyunTransport(session=session)  # type: ignore[arg-type]
-    with pytest.raises(TransportError, match="Failed to POST"):
+    with pytest.raises(TransportError, match=r"^Failed to POST /x: request timed out$"):
         await transport.call("/x", api_version="1.0", payload={})
 
 
