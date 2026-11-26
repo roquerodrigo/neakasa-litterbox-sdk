@@ -132,8 +132,9 @@ The SDK ships a `py.typed` marker so downstream consumers get type info.
 - Custom exceptions form a hierarchy: `NeakasaError` is the root. `ApiError`
   (non-zero `code` in the JHResult envelope), `AuthenticationError` (login /
   token failure, subclass of `ApiError`) with the narrower
-  `SessionExpiredError` and `InvalidCredentialsError`, and `TransportError`
-  (HTTP / network failure). Wrap raw `OSError` / `aiohttp` / `aiomqtt`
+  `SessionExpiredError` and `InvalidCredentialsError`, `GatewayTimeoutError`
+  (the cloud gateway timed out reaching its backend, subclass of `ApiError`),
+  and `TransportError` (HTTP / network failure). Wrap raw `OSError` / `aiohttp` / `aiomqtt`
   errors at the transport boundary so callers only catch this hierarchy.
 - Pre-validate inputs before opening a socket so user-facing errors point at
   the bad input, not a downstream traceback.
@@ -146,7 +147,7 @@ The SDK ships a `py.typed` marker so downstream consumers get type info.
   `Cat`, `CatGender`, `ToiletRecord`, `RecordType`, `DailyStatistics`,
   `Region`) and the exception hierarchy (`NeakasaError`, `ApiError`,
   `AuthenticationError`, `SessionExpiredError`, `InvalidCredentialsError`,
-  `TransportError`). Renaming or removing those symbols is a
+  `GatewayTimeoutError`, `TransportError`). Renaming or removing those symbols is a
   `BREAKING CHANGE:`.
 - Internal modules can change shape freely as long as the public re-exports
   keep working.

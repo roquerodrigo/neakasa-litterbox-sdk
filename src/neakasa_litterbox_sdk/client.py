@@ -18,11 +18,13 @@ from .crypto import aes_encrypt_with_boot_key, md5_double_hex
 from .exceptions import (
     ApiError,
     AuthenticationError,
+    GatewayTimeoutError,
     InvalidCredentialsError,
     NeakasaError,
     SessionExpiredError,
 )
 from .exceptions.credentials import INVALID_CREDENTIALS_CODES
+from .exceptions.gateway_timeout import GATEWAY_TIMEOUT_CODES
 from .exceptions.session import SESSION_EXPIRED_CODES
 from .models import (
     Cat,
@@ -694,7 +696,7 @@ def _unwrap_envelope(envelope: JsonObject, *, context: str, auth: bool = False) 
     if code != 0:
         error_cls = _error_class_for(code) if auth else ApiError
         raise error_cls(
-            f"Failed to {context}: server returned code {code}",
+            _server_error_text(context, code, message),
             code=code,
             server_message=message or None,
         )
@@ -714,15 +716,27 @@ def _unwrap_aliyun(envelope: JsonObject, *, context: str) -> JsonValue:
     code = get_int(envelope, "code", default=-1)
     message = get_str(envelope, "message")
     if code != ENVELOPE_SUCCESS_CODE:
-        error_cls: type[ApiError] = (
-            SessionExpiredError if code in _ALIYUN_SESSION_EXPIRED_CODES else ApiError
-        )
-        raise error_cls(
-            f"Failed to {context}: server returned code {code}",
+        raise _aliyun_error_class_for(code)(
+            _server_error_text(context, code, message),
             code=code,
             server_message=message or None,
         )
     return envelope.get("data")
+
+
+def _aliyun_error_class_for(code: int) -> type[ApiError]:
+    """Pick the most specific exception subclass for an Aliyun gateway ``code``."""
+    if code in _ALIYUN_SESSION_EXPIRED_CODES:
+        return SessionExpiredError
+    if code in GATEWAY_TIMEOUT_CODES:
+        return GatewayTimeoutError
+    return ApiError
+
+
+def _server_error_text(context: str, code: int, server_message: str) -> str:
+    """Describe a rejected call, quoting the server's own message when it sent one."""
+    text = f"Failed to {context}: server returned code {code}"
+    return f"{text} ({server_message})" if server_message else text
 
 
 def _error_class_for(code: int) -> type[ApiError]:

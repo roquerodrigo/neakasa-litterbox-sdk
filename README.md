@@ -281,14 +281,18 @@ them through without conversion.
 ```
 NeakasaError
 ├── ApiError                    (non-zero envelope code)
-│   └── AuthenticationError
-│       ├── SessionExpiredError      (codes 1007 / 3026 / 3027)
-│       └── InvalidCredentialsError  (codes 10060 / 10061 / 10192)
+│   ├── AuthenticationError
+│   │   ├── SessionExpiredError      (codes 1007 / 3026 / 3027)
+│   │   └── InvalidCredentialsError  (codes 10060 / 10061 / 10192)
+│   └── GatewayTimeoutError     (code 20056: the cloud timed out, retry later)
 └── TransportError              (HTTP / network failure)
 ```
 
 Catch the narrowest class that fits;  `AuthenticationError` is the
-catch-all for "auth went wrong".
+catch-all for "auth went wrong". `GatewayTimeoutError` is transient: the
+cloud gave up waiting for its own backend, and the same call normally
+succeeds a moment later. The SDK does not replay it, because a command
+that timed out may still have reached the device.
 
 ## Caching the session
 
