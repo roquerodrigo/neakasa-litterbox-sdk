@@ -150,7 +150,19 @@ def test_operating_state_from_code() -> None:
     assert OperatingState.from_code(3) is OperatingState.LEVELING
     assert OperatingState.from_code(1) is OperatingState.RESTORING
     assert OperatingState.from_code(5) is OperatingState.CAT_APPEARS
+    assert OperatingState.from_code(9) is OperatingState.CLEANING_INTERRUPTED
     assert OperatingState.from_code(7) is OperatingState.UNKNOWN
+
+
+def test_interrupted_cleaning_does_not_warn(caplog) -> None:
+    import logging
+
+    from neakasa_litterbox_sdk.models import operating_state as os_mod
+
+    with caplog.at_level(logging.WARNING, logger=os_mod.__name__):
+        status = DeviceStatus.from_response({"bucketStatus": _wrap(9)})
+    assert status.operating_state is OperatingState.CLEANING_INTERRUPTED
+    assert not caplog.records
 
 
 def test_operating_state_unmapped_code_warns_once(caplog) -> None:
