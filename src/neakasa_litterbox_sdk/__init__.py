@@ -6,6 +6,7 @@ from .client import NeakasaClient
 from .exceptions import (
     ApiError,
     AuthenticationError,
+    GatewayTimeoutError,
     InvalidCredentialsError,
     NeakasaError,
     SessionExpiredError,
@@ -39,6 +40,7 @@ __all__ = [
     "Device",
     "DeviceRole",
     "DeviceStatus",
+    "GatewayTimeoutError",
     "InvalidCredentialsError",
     "LoginResult",
     "NeakasaClient",
