@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.5](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.4...v0.2.5) (2026-11-26)
+
+Adds reporting of interrupted cleaning cycles, a dedicated GatewayTimeoutError for cloud timeouts, and clearer error messages.
+
+### New features
+
+- Interrupted cleaning cycles are now reported as the new OperatingState.CLEANING_INTERRUPTED instead of UNKNOWN, and no longer log an unmapped-code warning. ([#76](https://github.com/roquerodrigo/neakasa-litterbox-sdk/pull/76))
+- The SDK now raises GatewayTimeoutError, a subclass of ApiError, when the cloud gateway times out reaching its backend, so callers can treat it as transient; the call is not retried. ([#76](https://github.com/roquerodrigo/neakasa-litterbox-sdk/pull/76))
+
+### Improvements
+
+- Error messages for rejected calls now include the server's own message, for example the code followed by the gateway's description. ([#76](https://github.com/roquerodrigo/neakasa-litterbox-sdk/pull/76))
+
+### Bug fixes
+
+- Transport errors from requests that fail without a message, such as a timeout, no longer end in an empty string and now say 'request timed out' or name the error type. ([#76](https://github.com/roquerodrigo/neakasa-litterbox-sdk/pull/76))
+
 ## [0.2.4](https://github.com/roquerodrigo/neakasa-litterbox-sdk/compare/v0.2.3...v0.2.4) (2026-11-08)
 
 ### Improvements
